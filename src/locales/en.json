@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "home": "Home",
+    "services": "Services",
+    "rates": "Rates & Zones",
+    "fleet": "Fleet & Drivers",
+    "reviews": "Reviews",
+    "faq": "FAQ",
+    "contact": "Contact",
+    "blog": "Blog"
+  },
+  "hero": {
+    "title": "Stress-Free Airport Transfers in St. Lucia",
+    "subtitle": "Flat-rate fares • 24/7 local drivers • Free flight tracking"
+  },
+  "booking": {
+    "title": "Reserve Your Transportation",
+    "pickup": "Pickup Location",
+    "dropoff": "Drop-off Location",
+    "selectLocation": "Select location",
+    "date": "Pickup Date",
+    "time": "Pickup Time",
+    "passengers": "Number of Passengers",
+    "person": "Person",
+    "people": "People",
+    "luggage": "Luggage Details",
+    "luggagePlaceholder": "e.g., 2 suitcases + 1 carry-on",
+    "submit": "Request Reservation",
+    "submitting": "Processing...",
+    "note": "Pay driver upon arrival • Free cancellation up to 24h",
+    "personalInfo": "Personal Information",
+    "contactInfo": "Contact Details"
+  },
+  "cta": {
+    "book": "Book Now",
+    "contact": "Contact Us",
+    "call": "Call Us",
+    "whatsapp": "WhatsApp Us"
+  }
+}

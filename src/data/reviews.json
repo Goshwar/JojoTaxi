@@ -1,0 +1,28 @@
+{
+  "reviews": [
+    {
+      "id": "g1",
+      "name": "Jennifer M.",
+      "location": "New York, USA",
+      "rating": 5,
+      "date": "2025-02-15",
+      "text": "Excellent service! Our driver was punctual, friendly, and made our airport transfer completely stress-free. The vehicle was clean and comfortable. Highly recommended!"
+    },
+    {
+      "id": "g2",
+      "name": "Mark R.",
+      "location": "London, UK",
+      "rating": 5,
+      "date": "2025-02-10",
+      "text": "The island tour was the highlight of our trip! Our guide was knowledgeable and showed us hidden gems we would have never found on our own. Great value for money."
+    },
+    {
+      "id": "g3",
+      "name": "Sara L.",
+      "location": "Toronto, Canada",
+      "rating": 5,
+      "date": "2025-02-05",
+      "text": "Clean vehicles, professional service, and reasonable prices. We used them for our entire stay and were never disappointed. The booking process was smooth and efficient."
+    }
+  ]
+}

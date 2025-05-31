@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "home": "<!-- TODO translate --> Home",
+    "services": "<!-- TODO translate --> Services",
+    "rates": "<!-- TODO translate --> Rates & Zones",
+    "fleet": "<!-- TODO translate --> Fleet & Drivers",
+    "reviews": "<!-- TODO translate --> Reviews",
+    "faq": "<!-- TODO translate --> FAQ",
+    "contact": "<!-- TODO translate --> Contact",
+    "blog": "<!-- TODO translate --> Blog"
+  },
+  "hero": {
+    "title": "<!-- TODO translate --> Stress-Free Airport Transfers in St. Lucia",
+    "subtitle": "<!-- TODO translate --> Flat-rate fares • 24/7 local drivers • Free flight tracking"
+  },
+  "booking": {
+    "title": "<!-- TODO translate --> Reserve Your Transportation",
+    "pickup": "<!-- TODO translate --> Pickup Location",
+    "dropoff": "<!-- TODO translate --> Drop-off Location",
+    "selectLocation": "<!-- TODO translate --> Select location",
+    "date": "<!-- TODO translate --> Pickup Date",
+    "time": "<!-- TODO translate --> Pickup Time",
+    "passengers": "<!-- TODO translate --> Number of Passengers",
+    "person": "<!-- TODO translate --> Person",
+    "people": "<!-- TODO translate --> People",
+    "luggage": "<!-- TODO translate --> Luggage Details",
+    "luggagePlaceholder": "<!-- TODO translate --> e.g., 2 suitcases + 1 carry-on",
+    "submit": "<!-- TODO translate --> Request Reservation",
+    "submitting": "<!-- TODO translate --> Processing...",
+    "note": "<!-- TODO translate --> Pay driver upon arrival • Free cancellation up to 24h",
+    "personalInfo": "<!-- TODO translate --> Personal Information",
+    "contactInfo": "<!-- TODO translate --> Contact Details"
+  },
+  "cta": {
+    "book": "<!-- TODO translate --> Book Now",
+    "contact": "<!-- TODO translate --> Contact Us",
+    "call": "<!-- TODO translate --> Call Us",
+    "whatsapp": "<!-- TODO translate --> WhatsApp Us"
+  }
+}
