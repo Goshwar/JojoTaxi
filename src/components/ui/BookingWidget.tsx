@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { Shield, Plane, Star } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import Swal from 'sweetalert2';
+import { supabase } from '../../lib/supabase';
 
 interface FormData {
   name: string;
@@ -129,6 +131,22 @@ const BookingWidget: React.FC = () => {
           }),
         });
 
+        // Persist to Supabase regardless of webhook status
+        await supabase.from('bookings').insert([{
+          booking_ref: bookingRef,
+          name: updatedFormData.name,
+          email: updatedFormData.email,
+          phone: updatedFormData.phone,
+          pickup: updatedFormData.pickup,
+          dropoff: updatedFormData.dropoff,
+          pickup_date: updatedFormData.date,
+          pickup_time: updatedFormData.time,
+          passengers: Number(updatedFormData.passengers),
+          luggage: updatedFormData.luggage,
+          notes: updatedFormData.notes,
+          status: 'pending',
+        }]);
+
         if (response.ok) {
           await Swal.fire({
             title: 'Request sent',
@@ -136,7 +154,7 @@ const BookingWidget: React.FC = () => {
             icon: 'success',
             confirmButtonColor: '#FFC845'
           });
-          
+
           // Store booking reference and redirect
           sessionStorage.setItem('bookingRef', bookingRef);
           window.location.href = '/thank-you';

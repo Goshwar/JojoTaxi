@@ -71,15 +71,15 @@ const Home: React.FC = () => {
           }}
         >
           {heroSlides.map((slide, index) => (
-            <SwiperSlide key={index}>
-              <div className="relative h-full">
-                <img 
+            <SwiperSlide key={index} className="!h-full">
+              <div className="relative h-full min-h-[70vh] md:min-h-screen">
+                <img
                   src={slide.image}
                   alt={slide.alt}
                   className="h-full w-full object-cover"
                   loading={slide.priority ? "eager" : "lazy"}
                   decoding={slide.priority ? "sync" : "async"}
-                  fetchpriority={slide.priority ? "high" : "low"}
+                  fetchPriority={slide.priority ? "high" : "low"}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
               </div>
