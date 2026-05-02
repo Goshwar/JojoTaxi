@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Car, MapPin, Clock, ChevronDown } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade, Navigation, Pagination } from 'swiper/modules';
@@ -7,86 +7,61 @@ import 'swiper/css';
 import 'swiper/css/effect-fade';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-import BookingWidget from '../components/ui/BookingWidget';
 import SectionHeading from '../components/ui/SectionHeading';
 import ServiceCard from '../components/ui/ServiceCard';
+import { useBooking } from '../contexts/BookingContext';
 
 const Home: React.FC = () => {
+  const { openModal } = useBooking();
+  const navigate = useNavigate();
+
   useEffect(() => {
-    // Disable autoplay if user prefers reduced motion
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const swiperEl = document.querySelector('.hero-slider');
     if (mediaQuery.matches && swiperEl) {
       const swiperInstance = (swiperEl as any).swiper;
-      if (swiperInstance?.autoplay) {
-        swiperInstance.autoplay.stop();
-      }
+      if (swiperInstance?.autoplay) swiperInstance.autoplay.stop();
     }
   }, []);
 
+  const handleBookNow = () => {
+    if (window.innerWidth < 768) navigate('/booking');
+    else openModal();
+  };
+
   const heroSlides = [
-    {
-      image: '/Images/Marigot 1.jpg',
-      alt: 'Scenic view of Marigot Bay, St Lucia',
-      priority: true
-    },
-    {
-      image: '/Images/Pitons 1.jpg',
-      alt: 'The iconic Pitons of St Lucia',
-      priority: false
-    },
-    {
-      image: '/Images/Viewpoint 3.jpg',
-      alt: 'Panoramic viewpoint overlooking St Lucia coastline',
-      priority: false
-    }
+    { image: '/Images/Marigot 1.jpg', alt: 'Scenic view of Marigot Bay, St Lucia', priority: true },
+    { image: '/Images/Pitons 1.jpg', alt: 'The iconic Pitons of St Lucia', priority: false },
+    { image: '/Images/Viewpoint 3.jpg', alt: 'Panoramic viewpoint overlooking St Lucia coastline', priority: false },
   ];
 
   return (
     <div>
       {/* Hero Section */}
       <section className="relative min-h-[70vh] md:min-h-screen flex items-center">
-        {/* Hero Slider */}
         <Swiper
           className="hero-slider absolute inset-0 z-0"
           modules={[Autoplay, EffectFade, Navigation, Pagination]}
           effect="fade"
           speed={1000}
-          autoplay={{
-            delay: 6000,
-            disableOnInteraction: false,
-            pauseOnMouseEnter: true
-          }}
-          navigation={{
-            enabled: true,
-            prevEl: '.hero-prev',
-            nextEl: '.hero-next'
-          }}
-          pagination={{
-            enabled: true,
-            clickable: true,
-            el: '.hero-pagination',
-            bulletClass: 'hero-bullet',
-            bulletActiveClass: 'hero-bullet-active'
-          }}
+          autoplay={{ delay: 6000, disableOnInteraction: false, pauseOnMouseEnter: true }}
+          navigation={{ enabled: true, prevEl: '.hero-prev', nextEl: '.hero-next' }}
+          pagination={{ enabled: true, clickable: true, el: '.hero-pagination', bulletClass: 'hero-bullet', bulletActiveClass: 'hero-bullet-active' }}
         >
           {heroSlides.map((slide, index) => (
             <SwiperSlide key={index} className="!h-full">
               <div className="relative h-full min-h-[70vh] md:min-h-screen">
                 <img
-                  src={slide.image}
-                  alt={slide.alt}
+                  src={slide.image} alt={slide.alt}
                   className="h-full w-full object-cover"
-                  loading={slide.priority ? "eager" : "lazy"}
-                  decoding={slide.priority ? "sync" : "async"}
-                  fetchPriority={slide.priority ? "high" : "low"}
+                  loading={slide.priority ? 'eager' : 'lazy'}
+                  decoding={slide.priority ? 'sync' : 'async'}
+                  fetchPriority={slide.priority ? 'high' : 'low'}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
               </div>
             </SwiperSlide>
           ))}
-          
-          {/* Navigation Controls */}
           <div className="hidden md:block">
             <button className="hero-prev absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white/20 hover:bg-white/30 rounded-full p-3 transition-colors" aria-label="Previous slide">
               <ChevronDown className="w-6 h-6 text-white rotate-90" />
@@ -95,9 +70,7 @@ const Home: React.FC = () => {
               <ChevronDown className="w-6 h-6 text-white -rotate-90" />
             </button>
           </div>
-          
-          {/* Pagination Dots */}
-          <div className="hero-pagination absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-2"></div>
+          <div className="hero-pagination absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-2" />
         </Swiper>
 
         {/* Content Overlay */}
@@ -110,9 +83,9 @@ const Home: React.FC = () => {
               Flat-rate fares • 24/7 local drivers • Free flight tracking
             </h3>
             <div className="flex flex-wrap gap-4">
-              <Link to="/contact" className="btn btn-cta">
+              <button onClick={handleBookNow} className="btn btn-cta">
                 Book Your Transfer
-              </Link>
+              </button>
               <Link to="/services" className="btn btn-outline border-white text-white hover:bg-white/20">
                 Explore Services
               </Link>
@@ -121,49 +94,36 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Booking Widget */}
-      <section className="relative bg-gray-50 py-8 md:py-0 md:-mt-24">
-        <div className="container max-w-4xl mx-auto px-4 md:px-8">
-          <div className="relative z-20">
-            <BookingWidget />
-          </div>
-        </div>
-      </section>
-
       {/* Services Overview */}
       <section className="section bg-gray-50">
         <div className="container">
-          <SectionHeading 
-            title="Our Services" 
+          <SectionHeading
+            title="Our Services"
             subtitle="Professional transportation solutions for your St. Lucia experience"
             centered={true}
           />
-          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <ServiceCard 
+            <ServiceCard
               title="Airport → Hotel Transfers"
               description="Professional airport pickup service with flight tracking, meet & greet, and fixed rates. Available 24/7 at both UVF and SLU airports."
               icon={<Car size={24} className="text-turquoise" />}
               link="/services#airport-transfers"
             />
-            <ServiceCard 
+            <ServiceCard
               title="Island Tours"
               description="Discover St. Lucia's beauty with our customized tours. Visit the Pitons, botanical gardens, and hidden gems with our knowledgeable local guides."
               icon={<MapPin size={24} className="text-turquoise" />}
               link="/services#island-tours"
             />
-            <ServiceCard 
+            <ServiceCard
               title="Hourly Charter"
               description="Flexible transportation with your dedicated driver. Perfect for shopping trips, restaurant visits, or creating your own island adventure."
               icon={<Clock size={24} className="text-turquoise" />}
               link="/services#hourly-charter"
             />
           </div>
-
           <div className="text-center mt-12">
-            <Link to="/services" className="btn btn-primary">
-              View All Services
-            </Link>
+            <Link to="/services" className="btn btn-primary">View All Services</Link>
           </div>
         </div>
       </section>
@@ -173,11 +133,10 @@ const Home: React.FC = () => {
         <div className="container">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <SectionHeading 
-                title="Why Choose FUNtastic Taxi & Tours?" 
+              <SectionHeading
+                title="Why Choose FUNtastic Taxi & Tours?"
                 subtitle="Experience the difference with our premium transportation services"
               />
-              
               <div className="space-y-4">
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold mb-2">Professional Drivers</h3>
@@ -197,9 +156,8 @@ const Home: React.FC = () => {
                 </div>
               </div>
             </div>
-            
             <div>
-              <img 
+              <img
                 src="/Images/Waterfall 3.jpg"
                 alt="Professional driver welcoming tourists"
                 className="rounded-xl shadow-lg w-full h-[400px] object-cover"
@@ -217,9 +175,9 @@ const Home: React.FC = () => {
           <p className="text-xl mb-8 max-w-2xl mx-auto">
             Secure your airport transfer or island tour today and enjoy peace of mind for your St. Lucia trip.
           </p>
-          <Link to="/contact" className="btn btn-cta">
+          <button onClick={handleBookNow} className="btn btn-cta">
             Book Now
-          </Link>
+          </button>
         </div>
       </section>
     </div>

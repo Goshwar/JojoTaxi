@@ -108,7 +108,7 @@ const ContactForm: React.FC = () => {
 
       try {
         // Send to Make.com webhook
-        const response = await fetch('https://hook.us2.make.com/r581k137wr5yh7ciyr40quylwta5pa5b', {
+        const response = await fetch(import.meta.env.VITE_MAKE_WEBHOOK_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

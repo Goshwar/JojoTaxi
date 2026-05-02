@@ -1,13 +1,20 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Car, MapPin, Clock, Users, Calendar, CreditCard, MessageSquare } from 'lucide-react';
 import SectionHeading from '../components/ui/SectionHeading';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/effect-fade';
+import { useBooking } from '../contexts/BookingContext';
 
 const Services: React.FC = () => {
+  const { openModal } = useBooking();
+  const navigate = useNavigate();
+  const handleBookNow = () => {
+    if (window.innerWidth < 768) navigate('/booking');
+    else openModal();
+  };
   return (
     <div>
       {/* Page Header */}
@@ -72,12 +79,9 @@ const Services: React.FC = () => {
                   <span>Fixed rates, no hidden fees</span>
                 </li>
               </ul>
-              <Link 
-                to="/contact?service=Airport%20Transfer" 
-                className="btn btn-cta"
-              >
+              <button onClick={handleBookNow} className="btn btn-cta">
                 Book Airport Transfer
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -109,12 +113,9 @@ const Services: React.FC = () => {
                   <span>Private tours with expert local guides</span>
                 </li>
               </ul>
-              <Link 
-                to="/contact?service=Island%20Tour" 
-                className="btn btn-cta"
-              >
+              <button onClick={handleBookNow} className="btn btn-cta">
                 Book Island Tour
-              </Link>
+              </button>
             </div>
             <div className="order-1 lg:order-2 overflow-hidden rounded-xl">
               <Swiper
@@ -144,7 +145,7 @@ const Services: React.FC = () => {
                 </SwiperSlide>
                 <SwiperSlide>
                   <img 
-                    src="/Images/Waterfall 4 .jpg" 
+                    src="/Images/Waterfall 4.jpg"
                     alt="Waterfall Experience"
                     className="w-full h-full object-cover"
                   />
@@ -158,7 +159,7 @@ const Services: React.FC = () => {
                 </SwiperSlide>
                 <SwiperSlide>
                   <img 
-                    src="/Images/Viewpoint 1 .jpg" 
+                    src="/Images/Viewpoint 1.jpg"
                     alt="Scenic Viewpoint"
                     className="w-full h-full object-cover"
                   />
@@ -237,12 +238,9 @@ const Services: React.FC = () => {
                   <span>Perfect for groups and families</span>
                 </li>
               </ul>
-              <Link 
-                to="/contact?service=Hourly%20Charter" 
-                className="btn btn-cta"
-              >
+              <button onClick={handleBookNow} className="btn btn-cta">
                 Book Hourly Charter
-              </Link>
+              </button>
             </div>
           </div>
         </div>

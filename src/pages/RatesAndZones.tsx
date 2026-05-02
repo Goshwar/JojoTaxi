@@ -1,8 +1,15 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import SectionHeading from '../components/ui/SectionHeading';
+import { useBooking } from '../contexts/BookingContext';
 
 const RatesAndZones: React.FC = () => {
+  const { openModal } = useBooking();
+  const navigate = useNavigate();
+  const handleBookNow = () => {
+    if (window.innerWidth < 768) navigate('/booking');
+    else openModal();
+  };
   return (
     <div>
       {/* Page Header */}
@@ -157,9 +164,9 @@ const RatesAndZones: React.FC = () => {
                   <span>Bottled water included</span>
                 </li>
               </ul>
-              <Link to="/contact" className="btn btn-cta w-full">
+              <button onClick={handleBookNow} className="btn btn-cta w-full">
                 Book Now
-              </Link>
+              </button>
             </div>
 
             <div className="card hover:shadow-lg">
@@ -184,9 +191,9 @@ const RatesAndZones: React.FC = () => {
                   <span>Bottled water and refreshments</span>
                 </li>
               </ul>
-              <Link to="/contact" className="btn btn-cta w-full">
+              <button onClick={handleBookNow} className="btn btn-cta w-full">
                 Book Now
-              </Link>
+              </button>
             </div>
 
             <div className="card hover:shadow-lg">
@@ -211,9 +218,9 @@ const RatesAndZones: React.FC = () => {
                   <span>Ideal for shopping or restaurant visits</span>
                 </li>
               </ul>
-              <Link to="/contact" className="btn btn-cta w-full">
+              <button onClick={handleBookNow} className="btn btn-cta w-full">
                 Book Now
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -227,9 +234,9 @@ const RatesAndZones: React.FC = () => {
             Contact us today to confirm rates for your specific requirements and to make your reservation.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/contact" className="btn btn-cta">
+            <button onClick={handleBookNow} className="btn btn-cta">
               Book Now
-            </Link>
+            </button>
             <a href="tel:+17584860790" className="btn bg-white text-turquoise hover:bg-gray-100">
               Call Us
             </a>

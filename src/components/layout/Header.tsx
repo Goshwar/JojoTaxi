@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Phone, Menu, X, MessageSquare } from 'lucide-react';
+import { useBooking } from '../../contexts/BookingContext';
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { openModal } = useBooking();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleBookNow = () => {
+    setMobileMenuOpen(false);
+    if (window.innerWidth < 768) {
+      navigate('/booking');
+    } else {
+      openModal();
+    }
+  };
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -27,7 +34,7 @@ const Header: React.FC = () => {
   ];
 
   return (
-    <header 
+    <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'
       }`}
@@ -46,16 +53,14 @@ const Header: React.FC = () => {
             <NavLink
               key={link.path}
               to={link.path}
-              className={({ isActive }) => 
-                `nav-link ${isActive ? 'active' : ''}`
-              }
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
             >
               {link.name}
             </NavLink>
           ))}
         </nav>
 
-        {/* CTA buttons */}
+        {/* Desktop CTA */}
         <div className="hidden lg:flex items-center space-x-4">
           <a href="tel:+17584860790" className="text-turquoise hover:text-turquoise/80">
             <Phone size={20} />
@@ -63,15 +68,16 @@ const Header: React.FC = () => {
           <a href="https://wa.me/17584860790" className="text-turquoise hover:text-turquoise/80">
             <MessageSquare size={20} />
           </a>
-          <Link to="/contact" className="btn btn-cta">
+          <button onClick={handleBookNow} className="btn btn-cta">
             Book Now
-          </Link>
+          </button>
         </div>
 
         {/* Mobile menu button */}
-        <button 
+        <button
           className="lg:hidden text-gray-800"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
         >
           {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -85,9 +91,7 @@ const Header: React.FC = () => {
               <NavLink
                 key={link.path}
                 to={link.path}
-                className={({ isActive }) => 
-                  `nav-link ${isActive ? 'active' : ''}`
-                }
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {link.name}
@@ -100,13 +104,9 @@ const Header: React.FC = () => {
               <a href="https://wa.me/17584860790" className="flex items-center text-sm text-turquoise">
                 <MessageSquare size={16} className="mr-1" /> WhatsApp
               </a>
-              <Link 
-                to="/contact" 
-                className="btn btn-cta py-2 px-4 text-sm"
-                onClick={() => setMobileMenuOpen(false)}
-              >
+              <button onClick={handleBookNow} className="btn btn-cta py-2 px-4 text-sm">
                 Book Now
-              </Link>
+              </button>
             </div>
           </div>
         </nav>

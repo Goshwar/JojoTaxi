@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import SectionHeading from '../components/ui/SectionHeading';
+import { useBooking } from '../contexts/BookingContext';
 import TestimonialCard from '../components/ui/TestimonialCard';
 import ReviewForm from '../components/ui/ReviewForm';
 import { supabase } from '../lib/supabase';
@@ -16,6 +17,12 @@ interface Review {
 }
 
 const Reviews: React.FC = () => {
+  const { openModal } = useBooking();
+  const navigate = useNavigate();
+  const handleBookNow = () => {
+    if (window.innerWidth < 768) navigate('/booking');
+    else openModal();
+  };
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,9 +150,9 @@ const Reviews: React.FC = () => {
           <p className="text-xl mb-8 max-w-2xl mx-auto">
             Join our hundreds of satisfied customers and book your St. Lucia transportation today.
           </p>
-          <Link to="/contact" className="btn btn-cta">
+          <button onClick={handleBookNow} className="btn btn-cta">
             Book Now
-          </Link>
+          </button>
         </div>
       </section>
 

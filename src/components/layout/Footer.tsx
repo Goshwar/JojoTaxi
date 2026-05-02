@@ -12,6 +12,7 @@ const Footer: React.FC = () => {
             <h4 className="font-heading text-xl mb-4 text-white">FUNtastic Taxi & Tours</h4>
             <p className="text-gray-300 mb-4">Professional airport transfers and island tours in St. Lucia.</p>
             <div className="flex items-center space-x-4 mt-4">
+              {/* TODO: ADD REAL URLs */}
               <a href="#" className="text-gray-300 hover:text-turquoise transition-colors">
                 <Facebook size={20} />
               </a>

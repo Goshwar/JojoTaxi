@@ -1,461 +1,537 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Shield, Plane, Star } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { supabase } from '../../lib/supabase';
 
-interface FormData {
-  name: string;
+type Tab = 'airport' | 'tour';
+
+interface FormState {
+  full_name: string;
   email: string;
   phone: string;
-  pickup: string;
-  dropoff: string;
-  date: string;
-  time: string;
   passengers: string;
-  luggage: string;
-  notes: string;
-  bookingRef: string;
+  booking_date: string;
+  pickup_time: string;
+  special_requests: string;
+  // Airport Transfer
+  transfer_direction: 'arrival' | 'departure' | '';
+  flight_number: string;
+  airline: string;
+  pickup_location: string;
+  dropoff_location: string;
+  luggage_count: string;
+  // Island Tour
+  tour_type: string;
+  hotel_address: string;
+  duration_preference: string;
+  has_accessibility: boolean;
+  accessibility_needs: string;
 }
 
+const initial: FormState = {
+  full_name: '',
+  email: '',
+  phone: '',
+  passengers: '1',
+  booking_date: '',
+  pickup_time: '',
+  special_requests: '',
+  transfer_direction: '',
+  flight_number: '',
+  airline: '',
+  pickup_location: '',
+  dropoff_location: '',
+  luggage_count: '0',
+  tour_type: '',
+  hotel_address: '',
+  duration_preference: '',
+  has_accessibility: false,
+  accessibility_needs: '',
+};
+
+const cx = (...classes: (string | false | undefined)[]) =>
+  classes.filter(Boolean).join(' ');
+
+const inputBase =
+  'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise outline-none transition text-sm';
+
+const fieldInput = (hasError?: string) =>
+  cx(inputBase, hasError ? 'border-red-500' : 'border-gray-300');
+
+const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
+
 const BookingWidget: React.FC = () => {
-  const { t } = useTranslation();
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    email: '',
-    phone: '',
-    pickup: '',
-    dropoff: '',
-    date: '',
-    time: '',
-    passengers: '1',
-    luggage: '',
-    notes: '',
-    bookingRef: ''
-  });
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<Tab>('airport');
+  const [form, setForm] = useState<FormState>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const validateForm = useCallback(() => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.name) newErrors.name = 'Name is required';
-    if (!formData.email) newErrors.email = 'Email is required';
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+  const today = new Date().toISOString().split('T')[0];
+
+  const set = (field: keyof FormState) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setForm(prev => ({ ...prev, [field]: e.target.value }));
+
+  const setChecked = (field: keyof FormState) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm(prev => ({ ...prev, [field]: e.target.checked }));
+
+  const switchTab = (t: Tab) => {
+    setTab(t);
+    setErrors({});
+  };
+
+  const validate = (): boolean => {
+    const e: Record<string, string> = {};
+
+    if (!form.full_name.trim()) e.full_name = 'Full name is required';
+    if (!form.email.trim()) e.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email address';
+    if (!form.phone.trim()) e.phone = 'Phone / WhatsApp number is required';
+    if (!form.booking_date) e.booking_date = 'Date is required';
+    if (!form.pickup_time) e.pickup_time = 'Pickup time is required';
+
+    if (tab === 'airport') {
+      if (!form.transfer_direction) e.transfer_direction = 'Please select Arrival or Departure';
+      if (!form.flight_number.trim()) e.flight_number = 'Flight number is required';
+      if (!form.pickup_location.trim()) e.pickup_location = 'Pickup location is required';
+      if (!form.dropoff_location.trim()) e.dropoff_location = 'Drop-off location is required';
+    } else {
+      if (!form.tour_type) e.tour_type = 'Please select a tour type';
+      if (!form.hotel_address.trim()) e.hotel_address = 'Hotel / pickup address is required';
+      if (!form.duration_preference) e.duration_preference = 'Please select a duration';
     }
-    if (!formData.phone) newErrors.phone = 'Phone number is required';
-    if (!formData.pickup) newErrors.pickup = 'Pickup location is required';
-    if (!formData.dropoff) newErrors.dropoff = 'Drop-off location is required';
-    if (!formData.date) newErrors.date = 'Date is required';
-    if (!formData.time) newErrors.time = 'Time is required';
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [formData]);
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      const errorSummary = document.getElementById('error-summary');
-      if (errorSummary) errorSummary.focus();
+    if (!validate()) return;
+
+    setSubmitting(true);
+
+    const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const rand = String(Math.floor(1000 + Math.random() * 9000));
+    const booking_ref = `FTT-${dateStamp}-${rand}`;
+
+    const base = {
+      booking_ref,
+      booking_type: tab === 'airport' ? 'airport_transfer' : 'island_tour',
+      status: 'pending',
+      full_name: form.full_name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      passengers: Number(form.passengers),
+      booking_date: form.booking_date,
+      pickup_time: form.pickup_time,
+      special_requests: form.special_requests.trim() || null,
+    };
+
+    const payload =
+      tab === 'airport'
+        ? {
+            ...base,
+            transfer_direction: form.transfer_direction || null,
+            flight_number: form.flight_number.trim(),
+            airline: form.airline.trim() || null,
+            pickup_location: form.pickup_location.trim(),
+            dropoff_location: form.dropoff_location.trim(),
+            luggage_count: Number(form.luggage_count),
+          }
+        : {
+            ...base,
+            tour_type: form.tour_type,
+            hotel_address: form.hotel_address.trim(),
+            duration_preference: form.duration_preference,
+            accessibility_needs: form.has_accessibility
+              ? form.accessibility_needs.trim() || null
+              : null,
+          };
+
+    const { error: dbError } = await supabase.from('bookings').insert([payload]);
+
+    if (dbError) {
+      setSubmitting(false);
+      await Swal.fire({
+        title: 'Booking Failed',
+        text: 'We could not save your booking. Please try again or contact us directly.',
+        icon: 'error',
+        confirmButtonColor: '#FFC845',
+      });
       return;
     }
 
-    // Generate booking reference
-    const dateStamp = new Date().toISOString().slice(0,10).replaceAll('-', '');
-    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const bookingRef = `SL-${dateStamp}-${randomPart}`;
+    const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL as string | undefined;
+    if (webhookUrl) {
+      fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    }
 
-    // Update form data with booking reference
-    const updatedFormData = { ...formData, bookingRef };
-    setFormData(updatedFormData);
-
-    // Build confirmation summary
-    const summary = `
-      <div class="text-left">
-        <h3 class="text-lg font-bold mb-4">Booking Details</h3>
-        <p class="text-sm text-gray-600 mb-4">Booking Reference: ${bookingRef}</p>
-        <ul class="space-y-2">
-          <li><strong>Full Name:</strong> ${updatedFormData.name}</li>
-          <li><strong>Email:</strong> ${updatedFormData.email}</li>
-          <li><strong>Phone:</strong> ${updatedFormData.phone}</li>
-          <li><strong>Pickup:</strong> ${updatedFormData.pickup}</li>
-          <li><strong>Drop-off:</strong> ${updatedFormData.dropoff}</li>
-          <li><strong>Date:</strong> ${updatedFormData.date}</li>
-          <li><strong>Time:</strong> ${updatedFormData.time}</li>
-          <li><strong>Passengers:</strong> ${updatedFormData.passengers}</li>
-          ${updatedFormData.luggage ? `<li><strong>Luggage:</strong> ${updatedFormData.luggage}</li>` : ''}
-          ${updatedFormData.notes ? `<li><strong>Notes:</strong> ${updatedFormData.notes}</li>` : ''}
-        </ul>
-      </div>
-    `;
-
-    // Show confirmation dialog
-    const result = await Swal.fire({
-      title: 'Confirm your reservation',
-      html: summary,
-      showCancelButton: true,
-      confirmButtonText: 'Submit',
-      cancelButtonText: 'Cancel',
+    await Swal.fire({
+      title: 'Booking Received!',
+      html: `Your booking reference is <strong>${booking_ref}</strong>.<br/>We will confirm your reservation shortly.`,
+      icon: 'success',
       confirmButtonColor: '#FFC845',
-      focusConfirm: true,
-      customClass: {
-        container: 'booking-confirmation-modal'
-      }
     });
 
-    if (result.isConfirmed) {
-      setIsSubmitting(true);
-
-      try {
-        // Send to Make.com webhook
-        const response = await fetch('https://hook.us2.make.com/r581k137wr5yh7ciyr40quylwta5pa5b', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            bookingRef,
-            fullName: updatedFormData.name,
-            email: updatedFormData.email,
-            phone: updatedFormData.phone,
-            pickupLocation: updatedFormData.pickup,
-            dropoffLocation: updatedFormData.dropoff,
-            pickupDate: updatedFormData.date,
-            pickupTime: updatedFormData.time,
-            passengers: updatedFormData.passengers,
-            luggage: updatedFormData.luggage,
-            notes: updatedFormData.notes
-          }),
-        });
-
-        // Persist to Supabase regardless of webhook status
-        await supabase.from('bookings').insert([{
-          booking_ref: bookingRef,
-          name: updatedFormData.name,
-          email: updatedFormData.email,
-          phone: updatedFormData.phone,
-          pickup: updatedFormData.pickup,
-          dropoff: updatedFormData.dropoff,
-          pickup_date: updatedFormData.date,
-          pickup_time: updatedFormData.time,
-          passengers: Number(updatedFormData.passengers),
-          luggage: updatedFormData.luggage,
-          notes: updatedFormData.notes,
-          status: 'pending',
-        }]);
-
-        if (response.ok) {
-          await Swal.fire({
-            title: 'Request sent',
-            text: `Your booking request (${bookingRef}) has been received!`,
-            icon: 'success',
-            confirmButtonColor: '#FFC845'
-          });
-
-          // Store booking reference and redirect
-          sessionStorage.setItem('bookingRef', bookingRef);
-          window.location.href = '/thank-you';
-        } else {
-          throw new Error('Booking submission failed');
-        }
-      } catch (error) {
-        await Swal.fire({
-          title: 'Something went wrong',
-          text: 'Please try again or contact us directly.',
-          icon: 'error',
-          confirmButtonColor: '#FFC845'
-        });
-        
-        setErrors({
-          submit: 'There was an error submitting your booking. Please try again or contact us directly.'
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
+    sessionStorage.setItem('bookingRef', booking_ref);
+    navigate('/thank-you');
   };
 
-  const locations = [
-    "UVF – Hewanorra Int'l",
-    "SLU – George F. L. Charles",
-    "Hotel / Villa",
-    "Custom Address"
-  ];
-
   return (
-    <div className="relative min-h-[600px]">
-      <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
-        <h2 className="text-2xl font-bold mb-6 text-center">Book Your St. Lucia Transfer</h2>
-        
-        {Object.keys(errors).length > 0 && (
-          <div 
-            id="error-summary"
-            role="alert"
-            aria-live="assertive"
-            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
-            tabIndex={-1}
-          >
-            <p className="font-medium text-red-800 mb-2">Please correct the following errors:</p>
-            <ul className="list-disc list-inside text-red-700">
-              {Object.values(errors).map((error, index) => (
-                <li key={index}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        
-        <form id="taxi-booking-form" onSubmit={handleSubmit} className="space-y-6" noValidate>
-          <input type="hidden" name="bookingRef" id="bookingRef" value={formData.bookingRef} />
-          
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Your Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name*
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  aria-invalid={errors.name ? 'true' : 'false'}
-                  aria-describedby={errors.name ? 'name-error' : undefined}
-                />
-                {errors.name && (
-                  <p id="name-error" className="mt-1 text-sm text-red-600">{errors.name}</p>
-                )}
-              </div>
+    <div className="relative">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address*
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  aria-invalid={errors.email ? 'true' : 'false'}
-                  aria-describedby={errors.email ? 'email-error' : undefined}
-                />
-                {errors.email && (
-                  <p id="email-error" className="mt-1 text-sm text-red-600">{errors.email}</p>
-                )}
-              </div>
+        {/* Tab bar */}
+        <div className="flex border-b border-gray-200">
+          {(['airport', 'tour'] as Tab[]).map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => switchTab(t)}
+              className={cx(
+                'flex-1 py-4 text-sm font-semibold transition-colors focus:outline-none',
+                tab === t
+                  ? 'bg-[#00B8B8] text-white'
+                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              )}
+            >
+              {t === 'airport' ? 'Airport Transfer' : 'Island Tour'}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-5" noValidate>
+
+          {/* Error summary */}
+          {Object.keys(errors).length > 0 && (
+            <div role="alert" aria-live="assertive" className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="font-medium text-red-800 mb-2">Please correct the following:</p>
+              <ul className="list-disc list-inside text-red-700 text-sm space-y-1">
+                {Object.values(errors).map((err, i) => <li key={i}>{err}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {/* ── Shared fields ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="full_name" className={labelCls}>Full Name *</label>
+              <input
+                id="full_name"
+                type="text"
+                className={fieldInput(errors.full_name)}
+                value={form.full_name}
+                onChange={set('full_name')}
+                aria-invalid={!!errors.full_name}
+              />
+              {errors.full_name && <p className="mt-1 text-xs text-red-600">{errors.full_name}</p>}
+            </div>
+
+            <div>
+              <label htmlFor="email" className={labelCls}>Email *</label>
+              <input
+                id="email"
+                type="email"
+                className={fieldInput(errors.email)}
+                value={form.email}
+                onChange={set('email')}
+                aria-invalid={!!errors.email}
+              />
+              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
             </div>
           </div>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Contact Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number*
-              </label>
+              <label htmlFor="phone" className={labelCls}>Phone / WhatsApp (with country code) *</label>
               <input
-                type="tel"
                 id="phone"
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise ${
-                  errors.phone ? 'border-red-500' : 'border-gray-300'
-                }`}
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                required
-                aria-invalid={errors.phone ? 'true' : 'false'}
-                aria-describedby={errors.phone ? 'phone-error' : undefined}
+                type="tel"
+                placeholder="+1 758 000 0000"
+                className={fieldInput(errors.phone)}
+                value={form.phone}
+                onChange={set('phone')}
+                aria-invalid={!!errors.phone}
               />
-              {errors.phone && (
-                <p id="phone-error" className="mt-1 text-sm text-red-600">{errors.phone}</p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Transfer Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="pickup" className="block text-sm font-medium text-gray-700 mb-1">
-                  Pickup Location*
-                </label>
-                <select
-                  id="pickup"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise ${
-                    errors.pickup ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  value={formData.pickup}
-                  onChange={(e) => setFormData({ ...formData, pickup: e.target.value })}
-                  required
-                  aria-invalid={errors.pickup ? 'true' : 'false'}
-                  aria-describedby={errors.pickup ? 'pickup-error' : undefined}
-                >
-                  <option value="">Select pickup location</option>
-                  {locations.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
-                  ))}
-                </select>
-                {errors.pickup && (
-                  <p id="pickup-error" className="mt-1 text-sm text-red-600">{errors.pickup}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="dropoff" className="block text-sm font-medium text-gray-700 mb-1">
-                  Drop-off Location*
-                </label>
-                <select
-                  id="dropoff"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise ${
-                    errors.dropoff ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  value={formData.dropoff}
-                  onChange={(e) => setFormData({ ...formData, dropoff: e.target.value })}
-                  required
-                  aria-invalid={errors.dropoff ? 'true' : 'false'}
-                  aria-describedby={errors.dropoff ? 'dropoff-error' : undefined}
-                >
-                  <option value="">Select drop-off location</option>
-                  {locations.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
-                  ))}
-                </select>
-                {errors.dropoff && (
-                  <p id="dropoff-error" className="mt-1 text-sm text-red-600">{errors.dropoff}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
-                Pickup Date*
-              </label>
-              <input
-                type="date"
-                id="date"
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise ${
-                  errors.date ? 'border-red-500' : 'border-gray-300'
-                }`}
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                required
-                min={new Date().toISOString().split('T')[0]}
-                aria-invalid={errors.date ? 'true' : 'false'}
-                aria-describedby={errors.date ? 'date-error' : undefined}
-              />
-              {errors.date && (
-                <p id="date-error" className="mt-1 text-sm text-red-600">{errors.date}</p>
-              )}
+              {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone}</p>}
             </div>
 
             <div>
-              <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-1">
-                Pickup Time*
-              </label>
-              <input
-                type="time"
-                id="time"
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise ${
-                  errors.time ? 'border-red-500' : 'border-gray-300'
-                }`}
-                value={formData.time}
-                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                required
-                aria-invalid={errors.time ? 'true' : 'false'}
-                aria-describedby={errors.time ? 'time-error' : undefined}
-              />
-              {errors.time && (
-                <p id="time-error" className="mt-1 text-sm text-red-600">{errors.time}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="passengers" className="block text-sm font-medium text-gray-700 mb-1">
-                Number of Passengers*
-              </label>
+              <label htmlFor="passengers" className={labelCls}>Number of Passengers *</label>
               <select
                 id="passengers"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise"
-                value={formData.passengers}
-                onChange={(e) => setFormData({ ...formData, passengers: e.target.value })}
-                required
+                className={fieldInput()}
+                value={form.passengers}
+                onChange={set('passengers')}
               >
-                {[...Array(8)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1} {i === 0 ? 'Person' : 'People'}
-                  </option>
+                {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
+                  <option key={n} value={n}>{n} {n === 1 ? 'Passenger' : 'Passengers'}</option>
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="booking_date" className={labelCls}>Date *</label>
+              <input
+                id="booking_date"
+                type="date"
+                min={today}
+                className={fieldInput(errors.booking_date)}
+                value={form.booking_date}
+                onChange={set('booking_date')}
+                aria-invalid={!!errors.booking_date}
+              />
+              {errors.booking_date && <p className="mt-1 text-xs text-red-600">{errors.booking_date}</p>}
+            </div>
 
             <div>
-              <label htmlFor="luggage" className="block text-sm font-medium text-gray-700 mb-1">
-                Luggage Details
-              </label>
+              <label htmlFor="pickup_time" className={labelCls}>Pickup Time *</label>
               <input
-                type="text"
-                id="luggage"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise"
-                placeholder="e.g., 2 suitcases + 1 carry-on"
-                value={formData.luggage}
-                onChange={(e) => setFormData({ ...formData, luggage: e.target.value })}
+                id="pickup_time"
+                type="time"
+                className={fieldInput(errors.pickup_time)}
+                value={form.pickup_time}
+                onChange={set('pickup_time')}
+                aria-invalid={!!errors.pickup_time}
               />
+              {errors.pickup_time && <p className="mt-1 text-xs text-red-600">{errors.pickup_time}</p>}
             </div>
           </div>
 
+          {/* ── Airport Transfer fields ── */}
+          {tab === 'airport' && (
+            <>
+              <div>
+                <p className={labelCls}>Transfer Direction *</p>
+                <div className="flex gap-6 mt-1">
+                  {(['arrival', 'departure'] as const).map(dir => (
+                    <label key={dir} className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="transfer_direction"
+                        value={dir}
+                        checked={form.transfer_direction === dir}
+                        onChange={() => setForm(prev => ({ ...prev, transfer_direction: dir }))}
+                        className="w-4 h-4 accent-[#00B8B8]"
+                      />
+                      <span className="capitalize text-sm text-gray-700">{dir}</span>
+                    </label>
+                  ))}
+                </div>
+                {errors.transfer_direction && (
+                  <p className="mt-1 text-xs text-red-600">{errors.transfer_direction}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="flight_number" className={labelCls}>Flight Number *</label>
+                  <input
+                    id="flight_number"
+                    type="text"
+                    placeholder="e.g. AA 1234"
+                    className={fieldInput(errors.flight_number)}
+                    value={form.flight_number}
+                    onChange={set('flight_number')}
+                    aria-invalid={!!errors.flight_number}
+                  />
+                  {errors.flight_number && <p className="mt-1 text-xs text-red-600">{errors.flight_number}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="airline" className={labelCls}>
+                    Airline <span className="font-normal text-gray-400">(optional)</span>
+                  </label>
+                  <input
+                    id="airline"
+                    type="text"
+                    placeholder="e.g. American Airlines"
+                    className={fieldInput()}
+                    value={form.airline}
+                    onChange={set('airline')}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="pickup_location" className={labelCls}>Pickup Location *</label>
+                  <input
+                    id="pickup_location"
+                    type="text"
+                    placeholder="e.g. Hewanorra Airport, Hotel name"
+                    className={fieldInput(errors.pickup_location)}
+                    value={form.pickup_location}
+                    onChange={set('pickup_location')}
+                    aria-invalid={!!errors.pickup_location}
+                  />
+                  {errors.pickup_location && <p className="mt-1 text-xs text-red-600">{errors.pickup_location}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="dropoff_location" className={labelCls}>Drop-off Location *</label>
+                  <input
+                    id="dropoff_location"
+                    type="text"
+                    placeholder="e.g. Sandals Resort, Rodney Bay"
+                    className={fieldInput(errors.dropoff_location)}
+                    value={form.dropoff_location}
+                    onChange={set('dropoff_location')}
+                    aria-invalid={!!errors.dropoff_location}
+                  />
+                  {errors.dropoff_location && <p className="mt-1 text-xs text-red-600">{errors.dropoff_location}</p>}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="luggage_count" className={labelCls}>Luggage Count *</label>
+                <select
+                  id="luggage_count"
+                  className={fieldInput()}
+                  value={form.luggage_count}
+                  onChange={set('luggage_count')}
+                >
+                  {Array.from({ length: 11 }, (_, i) => i).map(n => (
+                    <option key={n} value={n}>{n} {n === 1 ? 'Bag' : 'Bags'}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* ── Island Tour fields ── */}
+          {tab === 'tour' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="tour_type" className={labelCls}>Tour Type *</label>
+                  <select
+                    id="tour_type"
+                    className={fieldInput(errors.tour_type)}
+                    value={form.tour_type}
+                    onChange={set('tour_type')}
+                    aria-invalid={!!errors.tour_type}
+                  >
+                    <option value="">Select a tour</option>
+                    <option value="island_tour">Island Tour</option>
+                    <option value="city_tour">City Tour</option>
+                    <option value="waterfall_tour">Waterfall Tour</option>
+                    <option value="sunset_tour">Sunset Tour</option>
+                  </select>
+                  {errors.tour_type && <p className="mt-1 text-xs text-red-600">{errors.tour_type}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="duration_preference" className={labelCls}>Duration *</label>
+                  <select
+                    id="duration_preference"
+                    className={fieldInput(errors.duration_preference)}
+                    value={form.duration_preference}
+                    onChange={set('duration_preference')}
+                    aria-invalid={!!errors.duration_preference}
+                  >
+                    <option value="">Select duration</option>
+                    <option value="half_day">Half Day</option>
+                    <option value="full_day">Full Day</option>
+                  </select>
+                  {errors.duration_preference && <p className="mt-1 text-xs text-red-600">{errors.duration_preference}</p>}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="hotel_address" className={labelCls}>Hotel / Pickup Address *</label>
+                <input
+                  id="hotel_address"
+                  type="text"
+                  placeholder="Hotel name or full pickup address"
+                  className={fieldInput(errors.hotel_address)}
+                  value={form.hotel_address}
+                  onChange={set('hotel_address')}
+                  aria-invalid={!!errors.hotel_address}
+                />
+                {errors.hotel_address && <p className="mt-1 text-xs text-red-600">{errors.hotel_address}</p>}
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={form.has_accessibility}
+                    onChange={setChecked('has_accessibility')}
+                    className="w-4 h-4 accent-[#00B8B8]"
+                  />
+                  <span className="text-sm font-medium text-gray-700">I have accessibility needs</span>
+                </label>
+                {form.has_accessibility && (
+                  <textarea
+                    className={cx(inputBase, 'border-gray-300 mt-3')}
+                    rows={2}
+                    placeholder="Please describe your accessibility requirements"
+                    value={form.accessibility_needs}
+                    onChange={set('accessibility_needs')}
+                  />
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ── Special Requests (shared) ── */}
           <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-              Additional Notes
+            <label htmlFor="special_requests" className={labelCls}>
+              Special Requests{' '}
+              <span className="font-normal text-gray-400">(optional, max 300 characters)</span>
             </label>
             <textarea
-              id="notes"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-turquoise focus:border-turquoise"
+              id="special_requests"
+              className={cx(inputBase, 'border-gray-300')}
               rows={3}
-              placeholder="Any special requests or information"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              maxLength={300}
+              placeholder="Any special requests or requirements"
+              value={form.special_requests}
+              onChange={set('special_requests')}
             />
+            <p className="text-xs text-gray-400 text-right mt-1">
+              {form.special_requests.length}/300
+            </p>
           </div>
 
-          <button 
+          <button
             type="submit"
+            disabled={submitting}
             className="w-full btn btn-cta text-lg py-4 transition transform hover:scale-[1.02] duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isSubmitting}
           >
-            {isSubmitting ? 'Processing...' : 'Request Reservation'}
+            {submitting ? 'Submitting...' : 'Request Reservation'}
           </button>
 
           <p className="text-center text-gray-500 text-sm">
-            Pay driver upon arrival • Free cancellation up to 24h
+            Pay driver upon arrival &bull; Free cancellation up to 24h
           </p>
         </form>
       </div>
 
+      {/* Trust badges */}
       <div className="mt-8 bg-gray-50 py-6 -mx-4 px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-          <div className="flex items-center justify-center">
-            <Star className="text-yellow mr-2" size={20} />
+          <div className="flex items-center justify-center gap-2">
+            <Star className="text-yellow" size={20} />
             <span className="text-gray-700 font-medium">5-Star Tripadvisor / Google</span>
           </div>
-          <div className="flex items-center justify-center">
-            <Shield className="text-turquoise mr-2" size={20} />
-            <span className="text-gray-700 font-medium">100% Licensed & Insured Drivers</span>
+          <div className="flex items-center justify-center gap-2">
+            <Shield className="text-turquoise" size={20} />
+            <span className="text-gray-700 font-medium">100% Licensed &amp; Insured Drivers</span>
           </div>
-          <div className="flex items-center justify-center">
-            <Plane className="text-turquoise mr-2" size={20} />
+          <div className="flex items-center justify-center gap-2">
+            <Plane className="text-turquoise" size={20} />
             <span className="text-gray-700 font-medium">Real-time Flight Monitoring</span>
           </div>
         </div>

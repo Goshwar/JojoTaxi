@@ -1,9 +1,16 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Phone, Mail, MapPin, MessageSquare } from 'lucide-react';
 import SectionHeading from '../components/ui/SectionHeading';
-import ContactForm from '../components/ui/ContactForm';
+import { useBooking } from '../contexts/BookingContext';
 
 const Contact: React.FC = () => {
+  const { openModal } = useBooking();
+  const navigate = useNavigate();
+  const handleBookNow = () => {
+    if (window.innerWidth < 768) navigate('/booking');
+    else openModal();
+  };
   return (
     <div>
       {/* Page Header */}
@@ -56,17 +63,18 @@ const Contact: React.FC = () => {
         </div>
       </section>
 
-      {/* Booking Form Section */}
+      {/* Ready to Book */}
       <section className="section bg-gray-50">
         <div className="container">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
             <div className="lg:col-span-3">
-              <SectionHeading 
-                title="Book Your Transportation" 
-                subtitle="Complete the form below to request a booking"
-              />
-              
-              <ContactForm />
+              <div className="bg-white rounded-2xl p-8 shadow-sm text-center mb-8">
+                <h2 className="text-3xl font-bold text-gray-900 mb-3">Ready to Book Your Trip?</h2>
+                <p className="text-gray-600 mb-8">Use our quick booking system to reserve your transfer or tour</p>
+                <button onClick={handleBookNow} className="btn btn-cta text-lg px-10 py-4">
+                  Book Now
+                </button>
+              </div>
 
               {/* Map */}
               <div className="map-wrapper mt-8" aria-label="Map showing the island of St Lucia">

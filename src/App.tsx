@@ -1,9 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { BookingProvider } from './contexts/BookingContext';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/admin/ProtectedRoute';
 import AdminLayout from './components/admin/AdminLayout';
+import BookingModal from './components/ui/BookingModal';
 
 // Public pages
 import Home from './pages/Home';
@@ -14,6 +16,7 @@ import Faq from './pages/Faq';
 import Contact from './pages/Contact';
 import ThankYou from './pages/ThankYou';
 import FleetAndDrivers from './pages/FleetAndDrivers';
+import Booking from './pages/Booking';
 
 // Admin pages
 import Login from './pages/admin/Login';
@@ -73,6 +76,7 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        <BookingProvider>
         <Router>
           <ScrollToTop />
           <Routes>
@@ -127,6 +131,9 @@ function App() {
               }
             />
 
+            {/* Booking page — no header/footer */}
+            <Route path="/booking" element={<Booking />} />
+
             {/* Public routes */}
             <Route
               path="/*"
@@ -148,11 +155,14 @@ function App() {
                   </Layout>
                   <WhatsAppWidget />
                   <CookieConsent />
+                  {/* Desktop booking modal — rendered outside Layout so it overlays everything */}
+                  <BookingModal mode="modal" />
                 </>
               }
             />
           </Routes>
         </Router>
+        </BookingProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

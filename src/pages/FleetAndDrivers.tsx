@@ -1,9 +1,16 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import SectionHeading from '../components/ui/SectionHeading';
 import { Shield, ThumbsUp, Clock, Award } from 'lucide-react';
+import { useBooking } from '../contexts/BookingContext';
 
 const FleetAndDrivers: React.FC = () => {
+  const { openModal } = useBooking();
+  const navigate = useNavigate();
+  const handleBookNow = () => {
+    if (window.innerWidth < 768) navigate('/booking');
+    else openModal();
+  };
   return (
     <div>
       {/* Page Header */}
@@ -281,9 +288,9 @@ const FleetAndDrivers: React.FC = () => {
           <p className="text-xl mb-8 max-w-2xl mx-auto">
             Book with confidence knowing you'll be traveling in comfort and safety with our professional team.
           </p>
-          <Link to="/contact" className="btn btn-cta">
+          <button onClick={handleBookNow} className="btn btn-cta">
             Book Now
-          </Link>
+          </button>
         </div>
       </section>
     </div>

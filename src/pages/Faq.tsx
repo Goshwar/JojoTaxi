@@ -1,9 +1,16 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import SectionHeading from '../components/ui/SectionHeading';
 import FaqItem from '../components/ui/FaqItem';
+import { useBooking } from '../contexts/BookingContext';
 
 const Faq: React.FC = () => {
+  const { openModal } = useBooking();
+  const navigate = useNavigate();
+  const handleBookNow = () => {
+    if (window.innerWidth < 768) navigate('/booking');
+    else openModal();
+  };
   return (
     <div>
       {/* Page Header */}
@@ -173,10 +180,10 @@ const Faq: React.FC = () => {
             <Link to="/contact" className="btn btn-primary">
               Contact Us
             </Link>
-            <a href="mailto:info@stluciataxitours.com" className="btn btn-outline">
+            <a href="mailto:funtastictaxitours@gmail.com" className="btn btn-outline">
               Email Us
             </a>
-            <a href="tel:+12345678900" className="btn btn-outline">
+            <a href="tel:+17584860790" className="btn btn-outline">
               Call Us
             </a>
           </div>
@@ -190,9 +197,9 @@ const Faq: React.FC = () => {
           <p className="text-xl mb-8 max-w-2xl mx-auto">
             Experience our professional service and make your St. Lucia trip smooth and enjoyable.
           </p>
-          <Link to="/contact" className="btn btn-cta">
+          <button onClick={handleBookNow} className="btn btn-cta">
             Book Now
-          </Link>
+          </button>
         </div>
       </section>
     </div>
