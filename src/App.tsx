@@ -15,7 +15,6 @@ import Reviews from './pages/Reviews';
 import Faq from './pages/Faq';
 import Contact from './pages/Contact';
 import ThankYou from './pages/ThankYou';
-import FleetAndDrivers from './pages/FleetAndDrivers';
 import Booking from './pages/Booking';
 
 // Admin pages
@@ -144,8 +143,7 @@ function App() {
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/services" element={<Services />} />
-                      <Route path="/fleet" element={<FleetAndDrivers />} />
-                      <Route path="/rates-and-zones" element={<RatesAndZones />} />
+<Route path="/rates-and-zones" element={<RatesAndZones />} />
                       <Route path="/reviews" element={<Reviews />} />
                       <Route path="/faq" element={<Faq />} />
                       <Route path="/contact" element={<Contact />} />
