@@ -41,9 +41,7 @@ const Header: React.FC = () => {
       <div className="container flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center">
-          <span className="text-2xl font-heading font-bold text-turquoise">
-            FUNtastic <span className="text-gray-800">Taxi & Tours</span>
-          </span>
+          <img src="/logo.png" alt="FUNtastic Taxi & Tours" style={{ height: '48px' }} />
         </Link>
 
         {/* Desktop Navigation */}
