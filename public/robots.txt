@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /admin/
-Sitemap: https://funtastictaxiandtours.netlify.app/sitemap.xml
+Sitemap: https://funtastictaxitours.com/sitemap.xml

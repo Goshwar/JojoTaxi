@@ -9,7 +9,7 @@ export default defineConfig({
       jsxRuntime: 'automatic'
     }),
     sitemap({
-      hostname: 'https://funtastictaxiandtours.netlify.app',
+      hostname: 'https://funtastictaxitours.com',
       dynamicRoutes: [
         '/services',
         '/rates-and-zones',
