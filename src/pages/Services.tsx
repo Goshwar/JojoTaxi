@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Car, MapPin, Clock, Users, Calendar, CreditCard, MessageSquare } from 'lucide-react';
 import SectionHeading from '../components/ui/SectionHeading';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -17,8 +18,15 @@ const Services: React.FC = () => {
   };
   return (
     <div>
+      <Helmet>
+        <title>Our Services | FUNtastic Taxi &amp; Tours St. Lucia</title>
+        <meta name="description" content="Airport transfers, island tours, hotel transfers, group charters and wedding transportation in St. Lucia. All private, all bookable online." />
+        <meta property="og:title" content="Our Services | FUNtastic Taxi & Tours St. Lucia" />
+        <meta property="og:url" content="https://funtastictaxiandtours.netlify.app/services" />
+      </Helmet>
+
       {/* Page Header */}
-      <section 
+      <section
         className="relative bg-cover bg-center py-32"
         style={{
           backgroundImage: 'url("/Images/Waterfall 1.jpg")'
@@ -52,8 +60,8 @@ const Services: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="overflow-hidden rounded-xl">
               <img 
-                src="/Images/SLU Airport.jpg" 
-                alt="St. Lucia Airport Transfer Service"
+                src="/Images/SLU Airport.jpg"
+                alt="George F. Charles Airport St. Lucia transfer service"
                 className="w-full h-[400px] object-cover"
               />
             </div>
@@ -130,37 +138,37 @@ const Services: React.FC = () => {
                 className="h-[400px]"
               >
                 <SwiperSlide>
-                  <img 
-                    src="/Images/Marigot 1.jpg" 
-                    alt="Marigot Bay Tour"
+                  <img
+                    src="/Images/Marigot 1.jpg"
+                    alt="Marigot Bay St. Lucia island tour"
                     className="w-full h-full object-cover"
                   />
                 </SwiperSlide>
                 <SwiperSlide>
-                  <img 
-                    src="/Images/Waterfall 1.jpg" 
-                    alt="Waterfall Tour"
+                  <img
+                    src="/Images/Waterfall 1.jpg"
+                    alt="Waterfall in St. Lucia rainforest tour"
                     className="w-full h-full object-cover"
                   />
                 </SwiperSlide>
                 <SwiperSlide>
-                  <img 
+                  <img
                     src="/Images/Waterfall 4.jpg"
-                    alt="Waterfall Experience"
+                    alt="Waterfall experience St. Lucia rainforest"
                     className="w-full h-full object-cover"
                   />
                 </SwiperSlide>
                 <SwiperSlide>
-                  <img 
-                    src="/Images/Jojo 3.jpg" 
-                    alt="St. Lucia Tour"
+                  <img
+                    src="/Images/Jojo 3.jpg"
+                    alt="FUNtastic Taxi island tour St. Lucia"
                     className="w-full h-full object-cover"
                   />
                 </SwiperSlide>
                 <SwiperSlide>
-                  <img 
+                  <img
                     src="/Images/Viewpoint 1.jpg"
-                    alt="Scenic Viewpoint"
+                    alt="Scenic viewpoint overlooking St. Lucia coastline"
                     className="w-full h-full object-cover"
                   />
                 </SwiperSlide>
@@ -187,30 +195,30 @@ const Services: React.FC = () => {
                 className="h-[400px]"
               >
                 <SwiperSlide>
-                  <img 
-                    src="/Images/Viewpoint 2.jpg" 
-                    alt="St. Lucia Viewpoint"
+                  <img
+                    src="/Images/Viewpoint 2.jpg"
+                    alt="Panoramic viewpoint St. Lucia"
                     className="w-full h-full object-cover"
                   />
                 </SwiperSlide>
                 <SwiperSlide>
-                  <img 
-                    src="/Images/Pitons 1.jpg" 
-                    alt="Pitons View"
+                  <img
+                    src="/Images/Pitons 1.jpg"
+                    alt="The Pitons St. Lucia UNESCO World Heritage Site"
                     className="w-full h-full object-cover"
                   />
                 </SwiperSlide>
                 <SwiperSlide>
-                  <img 
-                    src="/Images/Jojo 1.jpg" 
-                    alt="St. Lucia Experience"
+                  <img
+                    src="/Images/Jojo 1.jpg"
+                    alt="FUNtastic Taxi group charter St. Lucia"
                     className="w-full h-full object-cover"
                   />
                 </SwiperSlide>
                 <SwiperSlide>
-                  <img 
-                    src="/Images/Waterfall 3.jpg" 
-                    alt="Waterfall Visit"
+                  <img
+                    src="/Images/Waterfall 3.jpg"
+                    alt="Waterfall visit St. Lucia rainforest"
                     className="w-full h-full object-cover"
                   />
                 </SwiperSlide>

@@ -1,207 +1,262 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import SectionHeading from '../components/ui/SectionHeading';
 import FaqItem from '../components/ui/FaqItem';
-import { useBooking } from '../contexts/BookingContext';
+
+const categories = [
+  {
+    title: 'Airport Transfers',
+    items: [
+      {
+        question: 'How far is Hewanorra International Airport from Rodney Bay?',
+        answer:
+          'Hewanorra International Airport (UVF) is located in Vieux Fort in the south of St. Lucia, approximately 60–70km from Rodney Bay in the north. The drive typically takes 60–90 minutes depending on traffic. We provide comfortable, air-conditioned private transfers on this route every day of the year.',
+      },
+      {
+        question: 'Do you monitor my flight for delays?',
+        answer:
+          'Yes — we track all incoming flights in real time. If your flight is delayed, we automatically adjust your pickup time so your driver will still be waiting when you land. There is no extra charge for flight delays or early arrivals.',
+      },
+      {
+        question: 'What happens if I need to cancel my booking?',
+        answer:
+          'We accept cancellations up to 24 hours before your scheduled pickup for a full refund. For last-minute changes please contact us directly on WhatsApp and we will do our best to accommodate you.',
+      },
+      {
+        question: 'Do you offer meet and greet service at the airport?',
+        answer:
+          'Yes. Your driver will be waiting in the arrivals hall holding a sign with your name. We also offer fast-track airport assistance to help guide you through the terminal quickly after a long flight.',
+      },
+    ],
+  },
+  {
+    title: 'Island Tours',
+    items: [
+      {
+        question: 'What tours do you offer in St. Lucia?',
+        answer:
+          "We offer private island tours covering St. Lucia's most iconic attractions — the Pitons UNESCO World Heritage Site, Sulphur Springs volcano and mud baths in Soufriere, Diamond Botanical Gardens, Marigot Bay, and the stunning waterfalls of the island interior. All tours are private and fully customizable to your group.",
+      },
+      {
+        question: 'How long is the Soufriere and Pitons tour?',
+        answer:
+          'The full Soufriere day tour typically runs 8–10 hours including all stops. We pick you up from your hotel or resort, drive down the scenic west coast to Soufriere, visit the key attractions, and return by late afternoon. A shorter half-day option is also available.',
+      },
+      {
+        question: 'Can I customize my island tour itinerary?',
+        answer:
+          'Absolutely. All our tours are private so the itinerary is entirely up to you. Tell us which attractions you want to visit, any activities you want to include like snorkeling or rum tasting, and your available time — we will build the perfect tour around you.',
+      },
+    ],
+  },
+  {
+    title: 'Pricing & Payment',
+    items: [
+      {
+        question: 'How much does an airport transfer cost in St. Lucia?',
+        answer:
+          'Transfer prices vary by destination. A private transfer from Hewanorra Airport (UVF) to Rodney Bay ranges from $80–$110 USD per vehicle. Shorter routes to Cap Estate or Gros Islet start from $70 USD. All prices are per vehicle not per person. Visit our Rates & Zones page for full pricing.',
+      },
+      {
+        question: 'What payment methods do you accept?',
+        answer:
+          'We accept US Dollars (cash), Eastern Caribbean Dollars, and major credit and debit cards. Payment can be made on arrival or in advance when booking online. There are no hidden fees — the price you see is the price you pay.',
+      },
+      {
+        question: 'Are there any hidden charges or extra fees?',
+        answer:
+          'No. Our prices include the driver, vehicle, fuel, and air conditioning. Optional extras like guided commentary or additional stops on a tour may have added costs which we always discuss and agree upfront before confirming your booking.',
+      },
+    ],
+  },
+  {
+    title: 'Booking',
+    items: [
+      {
+        question: 'How far in advance should I book?',
+        answer:
+          'We recommend booking at least 24 hours in advance to guarantee your preferred vehicle and time slot. For peak travel periods like Christmas, New Year, and carnival season, booking 48–72 hours ahead is advisable. Last-minute bookings are accepted subject to availability.',
+      },
+      {
+        question: 'Can I change or cancel my booking?',
+        answer:
+          'Yes. Changes can be made up to 24 hours before your pickup at no charge. Cancellations made 24+ hours in advance receive a full refund. For same-day changes please message us on WhatsApp and we will do everything we can to help.',
+      },
+      {
+        question: 'How will I receive my booking confirmation?',
+        answer:
+          "After completing your booking you will receive an email confirmation with all your trip details. We will also send a WhatsApp message with your driver's name and contact number approximately 2 hours before your pickup time.",
+      },
+    ],
+  },
+  {
+    title: 'About St. Lucia',
+    items: [
+      {
+        question: 'What is the best time of year to visit St. Lucia?',
+        answer:
+          'St. Lucia is beautiful year-round. The dry season from December to May offers the most sunshine and is the most popular time to visit. The wetter months of June to November bring lush green landscapes and fewer crowds. The island rarely experiences severe weather and temperatures stay warm throughout the year.',
+      },
+      {
+        question: 'What are the must-see attractions in St. Lucia?',
+        answer:
+          'The top attractions include the Pitons (UNESCO World Heritage twin peaks), Sulphur Springs drive-in volcano in Soufriere, Diamond Botanical Gardens and waterfall, Marigot Bay, the Tet Paul Nature Trail with Pitons views, and the beautiful beaches of Reduit and Anse Chastanet.',
+      },
+      {
+        question: 'How do I get from the airport to my hotel in St. Lucia?',
+        answer:
+          'The best and most comfortable option is a private transfer with FUNtastic. We meet you at Hewanorra International Airport (UVF) or George F. Charles Airport (SLU) and drive you directly to your hotel or resort anywhere on the island. No shared shuttles, no waiting — just a private, air-conditioned ride.',
+      },
+    ],
+  },
+];
 
 const Faq: React.FC = () => {
-  const { openModal } = useBooking();
-  const navigate = useNavigate();
-  const handleBookNow = () => {
-    if (window.innerWidth < 768) navigate('/booking');
-    else openModal();
-  };
   return (
     <div>
-      {/* Page Header */}
-      <section className="bg-turquoise/10 py-20">
-        <div className="container text-center">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">Frequently Asked Questions</h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Find answers to common questions about our services and policies
-          </p>
-        </div>
-      </section>
+      <Helmet>
+        <title>FAQ | FUNtastic Taxi &amp; Tours St. Lucia</title>
+        <meta name="description" content="Answers to the most common questions about airport transfers, island tours, pricing and booking with FUNtastic Taxi & Tours in St. Lucia." />
+        <meta property="og:title" content="FAQ | FUNtastic Taxi & Tours St. Lucia" />
+        <meta property="og:url" content="https://funtastictaxiandtours.netlify.app/faq" />
+      </Helmet>
 
-      {/* FAQ Categories */}
-      <section className="section">
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-            {/* Booking & Reservations */}
-            <div>
-              <SectionHeading 
-                title="Booking & Reservations" 
-                subtitle="Questions about making a reservation"
-              />
-              
-              <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                <div className="divide-y divide-gray-200">
-                  <FaqItem 
-                    question="How far in advance should I book my airport transfer?"
-                    answer="We recommend booking your airport transfer at least 48 hours in advance to ensure availability. For peak season (December-April), we suggest booking 1-2 weeks ahead of time for the best options."
-                    isOpen={true}
-                  />
-                  <FaqItem 
-                    question="What information do I need to provide when booking?"
-                    answer="When booking, please provide your flight details (for airport transfers), full name, contact information, pickup and drop-off locations, date and time, number of passengers, and any special requirements you may have."
-                  />
-                  <FaqItem 
-                    question="How do I confirm my booking?"
-                    answer="Once you submit your booking request, you'll receive an email confirmation within 24 hours. This will include all your trip details and payment information. If you don't receive this, please check your spam folder or contact us."
-                  />
-                  <FaqItem 
-                    question="Can I modify or cancel my reservation?"
-                    answer="Yes, you can modify or cancel your reservation. For changes, please give us at least 24 hours' notice. Cancellations made 48+ hours before service receive a full refund, while those made 24-48 hours prior receive a 50% refund. Cancellations with less than 24 hours' notice are non-refundable."
-                  />
-                  <FaqItem 
-                    question="Do you require a deposit for bookings?"
-                    answer="For standard airport transfers, we typically require a 25% deposit to secure your booking, with the balance due on the day of service. For full-day tours or special arrangements, a 50% deposit may be required."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Services & Rates */}
-            <div>
-              <SectionHeading 
-                title="Services & Rates" 
-                subtitle="Questions about our services and pricing"
-              />
-              
-              <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                <div className="divide-y divide-gray-200">
-                  <FaqItem 
-                    question="What is included in the airport transfer rate?"
-                    answer="Our airport transfer rates include the vehicle, professional driver, bottled water, luggage handling, all taxes, and waiting time in case of flight delays. Gratuity is not included but is appreciated for excellent service."
-                    isOpen={true}
-                  />
-                  <FaqItem 
-                    question="Are there additional charges for flight delays?"
-                    answer="No, we monitor flight arrivals and adjust pickup times accordingly at no extra charge. We understand delays are beyond your control and will be there when you arrive."
-                  />
-                  <FaqItem 
-                    question="Do you offer round-trip discounts?"
-                    answer="Yes, we offer a 10% discount when you book round-trip transfers with us. This will be automatically applied when booking both journeys together."
-                  />
-                  <FaqItem 
-                    question="What payment methods do you accept?"
-                    answer="We accept credit cards (Visa, Mastercard, American Express), PayPal, and cash (USD, EUR, or Eastern Caribbean Dollars). Card payments can be made online during booking or with the driver using a mobile terminal."
-                  />
-                  <FaqItem 
-                    question="Do your drivers expect tips?"
-                    answer="Tipping is not mandatory but is customary for good service. A typical gratuity is 10-15% of the fare, but this is entirely at your discretion based on your satisfaction with the service."
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* More FAQs */}
-      <section className="section bg-gray-50">
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-            {/* Airport Transfers */}
-            <div>
-              <SectionHeading 
-                title="Airport Transfers" 
-                subtitle="Questions about our airport pickup service"
-              />
-              
-              <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                <div className="divide-y divide-gray-200">
-                  <FaqItem 
-                    question="How will I identify my driver at the airport?"
-                    answer="Your driver will be waiting in the arrival hall holding a sign with your name on it. In your booking confirmation, we'll provide specific meeting point details for either UVF or SLU airport."
-                  />
-                  <FaqItem 
-                    question="How long will the driver wait if my flight is delayed?"
-                    answer="Our drivers monitor flight arrivals and will adjust their schedule accordingly. There's no additional charge for waiting due to flight delays."
-                  />
-                  <FaqItem 
-                    question="How long does the transfer take from UVF airport to popular resorts?"
-                    answer="Transfer times vary by destination: Vieux Fort (15-20 min), Soufrière (45-60 min), Castries (90 min), and Rodney Bay/Gros Islet (100-120 min). These times may vary depending on traffic conditions."
-                  />
-                  <FaqItem 
-                    question="Do you provide child seats for airport transfers?"
-                    answer="Yes, we offer child and infant seats upon request. Please specify the age and weight of your child when booking so we can provide the appropriate seat. There's a small additional fee of $10 per seat."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Tours & Excursions */}
-            <div>
-              <SectionHeading 
-                title="Tours & Excursions" 
-                subtitle="Questions about our island tours"
-              />
-              
-              <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                <div className="divide-y divide-gray-200">
-                  <FaqItem 
-                    question="What types of tours do you offer?"
-                    answer="We offer a variety of tours including half-day and full-day island tours, volcano and waterfall tours, beach hopping tours, and customized excursions based on your interests."
-                  />
-                  <FaqItem 
-                    question="Are entrance fees to attractions included in tour rates?"
-                    answer="Entrance fees to attractions are not included in our standard tour rates. Your driver can assist with purchasing tickets at each venue, allowing you to choose which attractions you wish to visit."
-                  />
-                  <FaqItem 
-                    question="Do you provide tour guides or just transportation?"
-                    answer="Our drivers are knowledgeable about the island and provide commentary during tours. For specialized guided tours of specific attractions, we can arrange professional tour guides for an additional fee."
-                  />
-                  <FaqItem 
-                    question="Can tours be customized to our interests?"
-                    answer="Absolutely! We specialize in customized tours. Let us know your interests, and we'll recommend an itinerary. During the tour, you can also adjust the schedule as long as it fits within your booked time frame."
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Need More Information */}
-      <section className="section">
-        <div className="container text-center">
-          <SectionHeading 
-            title="Need More Information?" 
-            subtitle="We're here to help with any questions you may have"
-            centered={true}
+      {/* Hero Banner */}
+      <section style={{ background: 'var(--color-bg-soft)', padding: '4rem 1.5rem' }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
+          <SectionHeading
+            title="Frequently Asked Questions"
+            subtitle="Everything you need to know about getting around St. Lucia with FUNtastic Taxi & Tours."
+            align="center"
           />
-          
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-            If you haven't found the answer to your question, please contact us directly. We're happy to assist you with any inquiries.
-          </p>
-          
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/contact" className="btn btn-primary">
-              Contact Us
-            </Link>
-            <a href="mailto:funtastictaxitours@gmail.com" className="btn btn-outline">
-              Email Us
-            </a>
-            <a href="tel:+17584860790" className="btn btn-outline">
-              Call Us
-            </a>
-          </div>
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="section bg-turquoise text-white">
-        <div className="container text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">Ready to Book Your St. Lucia Transportation?</h2>
-          <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Experience our professional service and make your St. Lucia trip smooth and enjoyable.
+      {/* FAQ Content */}
+      <div style={{ maxWidth: '860px', margin: '0 auto', padding: '3rem 1.5rem' }}>
+        {categories.map((category) => (
+          <div key={category.title}>
+            {/* Category heading with teal accent bar */}
+            <h2
+              className="font-heading"
+              style={{
+                color: 'var(--color-navy)',
+                fontSize: '1.25rem',
+                fontWeight: 700,
+                marginBottom: '1rem',
+                marginTop: '2.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block',
+                  width: '3px',
+                  height: '16px',
+                  background: 'var(--color-teal)',
+                  borderRadius: '2px',
+                  flexShrink: 0,
+                }}
+              />
+              {category.title}
+            </h2>
+
+            {/* FaqItems wrapped with teal left border */}
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow-card)',
+                overflow: 'hidden',
+              }}
+            >
+              {category.items.map((item) => (
+                <div
+                  key={item.question}
+                  style={{ borderLeft: '3px solid var(--color-teal)', paddingLeft: '0.5rem' }}
+                >
+                  <FaqItem question={item.question} answer={item.answer} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* CTA Card */}
+        <div
+          style={{
+            background: 'var(--color-bg-soft)',
+            borderRadius: 'var(--radius-xl)',
+            padding: '3rem 2rem',
+            marginTop: '3rem',
+            textAlign: 'center',
+          }}
+        >
+          <h2
+            className="font-heading"
+            style={{
+              fontSize: '1.5rem',
+              fontWeight: 700,
+              color: 'var(--color-navy)',
+              marginBottom: '0.75rem',
+            }}
+          >
+            Still have questions?
+          </h2>
+          <p
+            style={{
+              color: 'var(--color-text-secondary)',
+              marginBottom: '1.5rem',
+            }}
+          >
+            We are happy to help. Book directly and our team will answer everything.
           </p>
-          <button onClick={handleBookNow} className="btn btn-cta">
-            Book Now
-          </button>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: '1rem',
+            }}
+          >
+            <Link
+              to="/booking"
+              style={{
+                background: 'var(--color-yellow)',
+                color: 'var(--color-navy)',
+                fontWeight: 700,
+                borderRadius: 'var(--radius-full)',
+                padding: '0.875rem 2rem',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
+            >
+              Book Now
+            </Link>
+            <a
+              href="https://wa.me/17584860790"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                border: '2px solid var(--color-teal)',
+                color: 'var(--color-teal)',
+                borderRadius: 'var(--radius-full)',
+                padding: '0.875rem 2rem',
+                textDecoration: 'none',
+                display: 'inline-block',
+                fontWeight: 500,
+                background: 'transparent',
+              }}
+            >
+              Message on WhatsApp
+            </a>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 };

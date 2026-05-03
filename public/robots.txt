@@ -1,10 +1,5 @@
-# St. Lucia Taxi & Tours robots.txt
 User-agent: *
 Allow: /
-Disallow: /404.html
-Disallow: /500.html
-Disallow: /offline.html
-Disallow: /data/
-Disallow: /locales/
-
-Sitemap: https://stluciataxitours.com/sitemap.xml
+Disallow: /admin
+Disallow: /admin/
+Sitemap: https://funtastictaxiandtours.netlify.app/sitemap.xml
