@@ -5,7 +5,12 @@
       "Bash(npm install *)",
       "Bash(npx tsc *)",
       "Bash(curl *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Bash(rm \"public/Images/Logo.png\")"
     ]
   }
 }

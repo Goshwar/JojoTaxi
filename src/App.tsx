@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { BookingProvider } from './contexts/BookingContext';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/admin/ProtectedRoute';
+import PublicProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/admin/AdminLayout';
 import BookingModal from './components/ui/BookingModal';
 
@@ -19,6 +20,7 @@ import Booking from './pages/Booking';
 
 // Admin pages
 import Login from './pages/admin/Login';
+import PublicLogin from './pages/Login';
 import Dashboard from './pages/admin/Dashboard';
 import AdminBookings from './pages/admin/AdminBookings';
 import AdminReviews from './pages/admin/AdminReviews';
@@ -79,14 +81,17 @@ function App() {
         <Router>
           <ScrollToTop />
           <Routes>
+            {/* Public login */}
+            <Route path="/login" element={<PublicLogin />} />
+
             {/* Admin routes */}
             <Route path="/admin/login" element={<Login />} />
             <Route
               path="/admin"
               element={
-                <ProtectedRoute>
-                  <AdminLayout><Dashboard /></AdminLayout>
-                </ProtectedRoute>
+                <PublicProtectedRoute>
+                  <AdminLayout><AdminReviews /></AdminLayout>
+                </PublicProtectedRoute>
               }
             />
             <Route
