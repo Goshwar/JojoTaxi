@@ -1,11 +1,23 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import sitemap from 'vite-plugin-sitemap';
 
 export default defineConfig({
   plugins: [
     react({
       jsxRuntime: 'automatic'
+    }),
+    sitemap({
+      hostname: 'https://funtastictaxiandtours.netlify.app',
+      dynamicRoutes: [
+        '/services',
+        '/rates-and-zones',
+        '/reviews',
+        '/faq',
+        '/contact',
+      ],
+      exclude: ['/404', '/500', '/offline'],
     }),
     VitePWA({
       registerType: 'autoUpdate',
