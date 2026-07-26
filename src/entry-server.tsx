@@ -1,3 +1,7 @@
+/* eslint-disable react-refresh/only-export-components --
+   This module runs only in Node during the build (see scripts/prerender.mjs)
+   and is never part of the browser bundle, so Fast Refresh does not apply.
+   Exporting the render function and build-time constants is the point of it. */
 import { StrictMode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
@@ -7,6 +11,8 @@ import App from './App';
 // Re-exported so scripts/prerender.mjs can read the route list straight off
 // the SSR bundle rather than parsing TypeScript source.
 export { PRERENDER_ROUTES } from './lib/routes';
+export { ZONES, roundTripFare, RATES_UPDATED } from './data/zones';
+export { SITE_URL } from './lib/site';
 
 export interface RenderResult {
   /** Rendered markup for the #root container. */

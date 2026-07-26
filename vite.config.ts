@@ -20,9 +20,32 @@ export default defineConfig(({ isSsrBuild }) => ({
             dynamicRoutes: [...SITEMAP_ROUTES],
             exclude: ['/404', '/500', '/offline'],
             // This plugin generates dist/robots.txt and overwrites
-            // public/robots.txt, so the admin disallow rules must be declared
-            // here to reach production.
+            // public/robots.txt, so all rules must be declared here to reach
+            // production.
+            //
+            // AI crawlers are listed explicitly so the policy is a deliberate
+            // decision rather than an accident of the wildcard rule: these
+            // engines are how travellers increasingly find transport
+            // operators, and we want the site cited in their answers.
             robots: [
+              // OpenAI: ChatGPT browsing and search indexing
+              { userAgent: 'GPTBot', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'OAI-SearchBot', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'ChatGPT-User', allow: '/', disallow: ['/admin', '/admin/'] },
+              // Anthropic: Claude
+              { userAgent: 'ClaudeBot', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'Claude-Web', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'anthropic-ai', allow: '/', disallow: ['/admin', '/admin/'] },
+              // Perplexity
+              { userAgent: 'PerplexityBot', allow: '/', disallow: ['/admin', '/admin/'] },
+              // Google Gemini / AI Overviews (separate from Googlebot indexing)
+              { userAgent: 'Google-Extended', allow: '/', disallow: ['/admin', '/admin/'] },
+              // Apple Intelligence, Amazon, and Common Crawl (a training and
+              // retrieval corpus several engines draw on)
+              { userAgent: 'Applebot-Extended', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'Amazonbot', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'CCBot', allow: '/', disallow: ['/admin', '/admin/'] },
+              // Everything else, including Googlebot and Bingbot
               { userAgent: '*', allow: '/', disallow: ['/admin', '/admin/'] },
             ],
           }),

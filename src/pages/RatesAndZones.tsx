@@ -5,6 +5,7 @@ import { useBooking } from '../contexts/BookingContext';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
 import { breadcrumbSchema } from '../lib/schema';
+import { ZONES, roundTripFare, RATES_UPDATED } from '../data/zones';
 
 const RatesAndZones: React.FC = () => {
   const { openModal } = useBooking();
@@ -35,11 +36,18 @@ const RatesAndZones: React.FC = () => {
       {/* Rate Information */}
       <section className="section">
         <div className="container">
-          <SectionHeading 
-            title="Airport Transfer Rates" 
+          <SectionHeading
+            title="Airport Transfer Rates"
             subtitle="Fixed rates based on your destination zone"
           />
-          
+
+          {/* Units and currency stated explicitly, and dated, so both readers
+              and AI engines can quote these figures with confidence. */}
+          <p className="text-center text-gray-600 mb-6">
+            All prices are in <strong>US dollars per vehicle</strong> (not per person).
+            Rates updated {RATES_UPDATED}.
+          </p>
+
           <div className="bg-white rounded-xl shadow-md overflow-hidden mb-12">
             <div className="overflow-x-auto">
               {/* TODO: replace with live component in later iteration */}
@@ -54,41 +62,19 @@ const RatesAndZones: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">Zone 1</td>
-                    <td className="px-6 py-4">Vieux Fort, Laborie</td>
-                    <td className="px-6 py-4">$30</td>
-                    <td className="px-6 py-4">$85</td>
-                    <td className="px-6 py-4">$54</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">Zone 2</td>
-                    <td className="px-6 py-4">Choiseul, Soufrière</td>
-                    <td className="px-6 py-4">$65</td>
-                    <td className="px-6 py-4">$95</td>
-                    <td className="px-6 py-4">$117</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">Zone 3</td>
-                    <td className="px-6 py-4">Anse La Raye, Canaries</td>
-                    <td className="px-6 py-4">$80</td>
-                    <td className="px-6 py-4">$55</td>
-                    <td className="px-6 py-4">$144</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">Zone 4</td>
-                    <td className="px-6 py-4">Castries, Marigot Bay</td>
-                    <td className="px-6 py-4">$90</td>
-                    <td className="px-6 py-4">$30</td>
-                    <td className="px-6 py-4">$162</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">Zone 5</td>
-                    <td className="px-6 py-4">Rodney Bay, Gros Islet, Cap Estate</td>
-                    <td className="px-6 py-4">$100</td>
-                    <td className="px-6 py-4">$45</td>
-                    <td className="px-6 py-4">$180</td>
-                  </tr>
+                  {ZONES.map((z) => (
+                    <tr key={z.zone}>
+                      <td className="px-6 py-4 whitespace-nowrap">{z.zone}</td>
+                      <td className="px-6 py-4">{z.areas}</td>
+                      {/* Interpolated as one string: writing `${z.uvf}` next to
+                          a literal "$" makes React emit a <!-- --> separator
+                          between them, which crude text extractors read as
+                          "$ 30" instead of "$30". */}
+                      <td className="px-6 py-4">{`$${z.uvf}`}</td>
+                      <td className="px-6 py-4">{`$${z.slu}`}</td>
+                      <td className="px-6 py-4">{`$${roundTripFare(z.uvf)}`}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -2,7 +2,7 @@
 
 **Companion documents:** `SEO_GEO_AUDIT.md` (findings & gap table) · `GITHUB_ISSUES_GUIDE.md` (tracking protocol)
 **Tracking:** GitHub issues [#1](https://github.com/Goshwar/JojoTaxi/issues/1)–[#6](https://github.com/Goshwar/JojoTaxi/issues/6), one per phase.
-**Status:** D1–D3 resolved. Phases 1–3 complete (issues #1, #2, #3). Phase 4 next.
+**Status:** D1–D3 resolved. Phases 1–4 complete (issues #1–#4). Phase 5 next.
 
 > ### Standing rule — do not activate dormant routes
 > Some pages exist in the codebase but are deliberately **not routed** (currently
@@ -171,6 +171,13 @@ Sitemap: <SITE_URL>/sitemap.xml
 `RatesAndZones.tsx`: add visible "Rates updated: <month year> · all prices per vehicle, USD" line (also lands in prerendered HTML and llms.txt).
 
 **Verify (before closing #4):** `<domain>/llms.txt` returns 200 with correct content-type; robots.txt validates in Google's robots tester.
+
+### Implementation notes (as built)
+- `llms.txt` is **generated at build time** (`scripts/generate-llms-txt.mjs`) from `src/data/zones.ts` — the same module that renders the rates table — so prices quoted to AI engines cannot drift from prices shown to visitors. A hand-written file would have gone stale at the first price change.
+- The zone rates were extracted from hardcoded JSX into `src/data/zones.ts` to make that possible. Round-trip fares are now derived (`2 × one-way − 10%`) rather than restated; verified to produce values identical to the previous hardcoded table.
+- Prices are interpolated as single strings (`` {`$${z.uvf}`} ``) rather than a literal `$` beside an expression. React emits a `<!-- -->` separator between adjacent text nodes, which crude text extractors read as `$ 30` instead of `$30`.
+- AI crawlers are enumerated individually in the robots config rather than relying on the wildcard, so the permission is a recorded decision. Each still inherits the `/admin` disallow.
+- `src/entry-server.tsx` disables `react-refresh/only-export-components` at file level: it runs only in Node at build time and is never in the browser bundle, so the rule does not apply.
 
 ---
 
