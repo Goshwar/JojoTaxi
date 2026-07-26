@@ -1,11 +1,12 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import SectionHeading from '../components/ui/SectionHeading';
 import { useBooking } from '../contexts/BookingContext';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
 import { breadcrumbSchema } from '../lib/schema';
 import { ZONES, roundTripFare, RATES_UPDATED } from '../data/zones';
+import { TRANSFER_ROUTES, routeFare } from '../data/transferRoutes';
 
 const RatesAndZones: React.FC = () => {
   const { openModal } = useBooking();
@@ -77,6 +78,27 @@ const RatesAndZones: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Links to the per-corridor pages: gives crawlers a path to them and
+              lets travellers jump straight to their own route. */}
+          <div className="mb-12">
+            <h3 className="text-xl font-bold mb-4">Popular airport transfer routes</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {TRANSFER_ROUTES.map((route) => (
+                <Link
+                  key={route.slug}
+                  to={`/airport-transfers/${route.slug}`}
+                  className="card p-5 hover:shadow-lg transition-shadow"
+                >
+                  <p className="font-bold">{route.airport} to {route.destination}</p>
+                  <p className="text-turquoise font-bold text-lg">
+                    {`$${routeFare(route)}`}{' '}
+                    <span className="text-sm text-gray-500 font-normal">one-way per vehicle</span>
+                  </p>
+                </Link>
+              ))}
             </div>
           </div>
 

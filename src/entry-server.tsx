@@ -13,6 +13,8 @@ import App from './App';
 export { PRERENDER_ROUTES } from './lib/routes';
 export { ZONES, roundTripFare, RATES_UPDATED } from './data/zones';
 export { SITE_URL } from './lib/site';
+export { TRANSFER_ROUTES, routeFare, AIRPORT_NAMES } from './data/transferRoutes';
+export { TOURS } from './data/tours';
 
 export interface RenderResult {
   /** Rendered markup for the #root container. */

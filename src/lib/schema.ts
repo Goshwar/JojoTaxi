@@ -117,6 +117,63 @@ export const servicesSchema = (services: { name: string; description: string }[]
     url: absoluteUrl('/services'),
   }));
 
+/**
+ * Schema for a single airport-transfer corridor page. Modelled as a Service
+ * with a concrete offer, so the fare is machine-readable rather than buried
+ * in prose — this is what lets an engine answer "how much is a taxi from UVF
+ * to Rodney Bay" with a number.
+ */
+export const transferRouteSchema = (route: {
+  destination: string;
+  slug: string;
+  airportName: string;
+  fare: number;
+  intro: string;
+}) => ({
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  name: `${route.airportName} to ${route.destination} Private Transfer`,
+  description: route.intro,
+  serviceType: 'Airport transfer',
+  provider: { '@id': BUSINESS_ID },
+  areaServed: { '@type': 'Country', name: 'Saint Lucia' },
+  url: absoluteUrl(`/airport-transfers/${route.slug}`),
+  offers: {
+    '@type': 'Offer',
+    price: String(route.fare),
+    priceCurrency: 'USD',
+    // The fare buys one vehicle, not one seat — stated so engines do not
+    // reproduce it as a per-person price.
+    description: 'One-way, per vehicle',
+    availability: 'https://schema.org/InStock',
+    url: absoluteUrl(`/airport-transfers/${route.slug}`),
+  },
+});
+
+/** Schema for a tour page. TouristTrip is the specific type engines expect. */
+export const tourSchema = (tour: {
+  name: string;
+  slug: string;
+  intro: string;
+  stops: string[];
+}) => ({
+  '@context': 'https://schema.org',
+  '@type': 'TouristTrip',
+  name: tour.name,
+  description: tour.intro,
+  url: absoluteUrl(`/tours/${tour.slug}`),
+  provider: { '@id': BUSINESS_ID },
+  touristType: 'Leisure travellers',
+  itinerary: {
+    '@type': 'ItemList',
+    itemListElement: tour.stops.map((stop, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: stop,
+    })),
+  },
+});
+
 /** Builds BreadcrumbList schema. Pass the trail excluding Home, which is added. */
 export const breadcrumbSchema = (trail: { name: string; path: string }[]) => ({
   '@context': 'https://schema.org',

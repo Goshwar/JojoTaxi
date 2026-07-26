@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade } from 'swiper/modules';
@@ -9,6 +9,7 @@ import { useBooking } from '../contexts/BookingContext';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
 import { servicesSchema, breadcrumbSchema } from '../lib/schema';
+import { TOURS } from '../data/tours';
 
 /**
  * Service names and descriptions, mirrored into Service schema below. Kept
@@ -262,6 +263,18 @@ const Services: React.FC = () => {
               description="Discover the natural beauty and cultural richness of St. Lucia with our customized island tours. From the iconic Pitons to hidden gems off the beaten path, our knowledgeable guides will show you the best of our island paradise. Choose from half-day or full-day tours tailored to your interests."
             />
             <BulletList items={['Visit iconic landmarks and hidden gems', 'Flexible scheduling and customizable routes', 'Private tours with expert local guides']} />
+            {/* Links to the tour detail pages so crawlers can reach them. */}
+            <p className="font-body mb-6">
+              Popular tours:{' '}
+              {TOURS.map((tour, index) => (
+                <React.Fragment key={tour.slug}>
+                  {index > 0 && ' · '}
+                  <Link to={`/tours/${tour.slug}`} className="text-turquoise underline">
+                    {tour.name}
+                  </Link>
+                </React.Fragment>
+              ))}
+            </p>
             <CTAButton onClick={handleBookNow}>Book Island Tour</CTAButton>
           </TextCol>
           <SwiperCol
