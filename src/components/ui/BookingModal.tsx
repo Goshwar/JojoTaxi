@@ -142,11 +142,14 @@ interface Props {
 
 const STEP_LABELS = ['Service', 'Trip Details', 'Passengers', 'Contact', 'Confirm'];
 
+/** The five booking wizard steps, in order. */
+type Step = 1 | 2 | 3 | 4 | 5;
+
 const BookingModal: React.FC<Props> = ({ mode = 'modal' }) => {
   const navigate = useNavigate();
   const { isOpen, closeModal } = useBooking();
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>(initial);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState | string, string>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -238,15 +241,15 @@ const BookingModal: React.FC<Props> = ({ mode = 'modal' }) => {
 
   const goNext = () => {
     if (!validate(step)) return;
-    setStep(s => (s < 5 ? (s + 1) as any : s));
+    setStep(s => (s < 5 ? ((s + 1) as Step) : s));
   };
 
   const goBack = () => {
     setErrors({});
-    setStep(s => (s > 1 ? (s - 1) as any : s));
+    setStep(s => (s > 1 ? ((s - 1) as Step) : s));
   };
 
-  const goToStep = (s: 1 | 2 | 3 | 4 | 5) => {
+  const goToStep = (s: Step) => {
     setErrors({});
     setStep(s);
   };

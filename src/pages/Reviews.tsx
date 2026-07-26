@@ -116,8 +116,6 @@ const Reviews: React.FC = () => {
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
 
-  const hasActiveFilter = ratingFilter !== null || serviceFilter !== '';
-
   return (
     <div>
       <Seo

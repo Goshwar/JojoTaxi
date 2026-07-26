@@ -21,7 +21,6 @@ import Booking from './pages/Booking';
 // Admin pages
 import Login from './pages/admin/Login';
 import PublicLogin from './pages/Login';
-import Dashboard from './pages/admin/Dashboard';
 import AdminBookings from './pages/admin/AdminBookings';
 import AdminReviews from './pages/admin/AdminReviews';
 import AdminMessages from './pages/admin/AdminMessages';

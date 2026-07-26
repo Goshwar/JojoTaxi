@@ -14,6 +14,11 @@ import { useInView } from '../hooks/useInView';
 import { supabase } from '../lib/supabase';
 import Seo from '../components/ui/Seo';
 
+/** Minimal shape of the Swiper instance attached to the slider element. */
+interface SwiperInstance {
+  autoplay?: { stop: () => void };
+}
+
 interface Review {
   id: string;
   reviewer_name: string;
@@ -37,10 +42,9 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const swiperEl = document.querySelector('.hero-slider');
-    if (mediaQuery.matches && swiperEl) {
-      const swiperInstance = (swiperEl as any).swiper;
-      if (swiperInstance?.autoplay) swiperInstance.autoplay.stop();
+    const swiperEl = document.querySelector<HTMLElement & { swiper?: SwiperInstance }>('.hero-slider');
+    if (mediaQuery.matches && swiperEl?.swiper?.autoplay) {
+      swiperEl.swiper.autoplay.stop();
     }
   }, []);
 
