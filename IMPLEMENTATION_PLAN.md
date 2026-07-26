@@ -2,7 +2,7 @@
 
 **Companion documents:** `SEO_GEO_AUDIT.md` (findings & gap table) · `GITHUB_ISSUES_GUIDE.md` (tracking protocol)
 **Tracking:** GitHub issues [#1](https://github.com/Goshwar/JojoTaxi/issues/1)–[#6](https://github.com/Goshwar/JojoTaxi/issues/6), one per phase.
-**Status:** D1–D3 resolved. Phase 1 complete (see issue #1). Phase 2 next.
+**Status:** D1–D3 resolved. Phase 1 complete (issue #1). Phase 2 complete (issue #2). Phase 3 next.
 
 > ### Standing rule — do not activate dormant routes
 > Some pages exist in the codebase but are deliberately **not routed** (currently
@@ -106,7 +106,14 @@ Audit for SSR crashers and guard with `typeof window !== 'undefined'` or lazy-mo
 ### 2.4 Service worker interaction
 `NetworkFirst` for HTML is already correct for prerendered pages — verify the PWA `navigateFallback` doesn't shadow the static route files.
 
-**Verify (before closing #2):** `grep -l "Hewanorra" dist/faq/index.html` succeeds; each prerendered file contains its own unique `<title>` and canonical; no hydration warnings in dev console; Lighthouse SEO score ≥ 95; after deploy, `curl <domain>/rates-and-zones` shows rate figures without JS.
+**Verify (before closing #2):** `grep -l "Hewanorra" dist/faq.html` succeeds; each prerendered file contains its own unique `<title>` and canonical; no hydration errors; after deploy, `curl <domain>/rates-and-zones` shows rate figures without JS.
+
+### Implementation notes (as built)
+- Output is **flat files** (`dist/faq.html`), not directory indexes (`dist/faq/index.html`). Both work on Netlify, but the flat form also resolves under `vite preview` and avoids trailing-slash ambiguity — with directory indexes, a request for `/faq` (no trailing slash) fell through to the SPA fallback and served homepage markup, which then failed to hydrate against the real route.
+- `src/lib/routes.ts` is the single route list feeding both the prerenderer and the sitemap, so a page cannot appear in one without the other.
+- The prerender script fails the build if any route yields empty markup or no canonical tag, so a silent regression cannot ship.
+- The SSR build skips the sitemap and PWA plugins (`isSsrBuild`) since it exists only to feed the prerenderer.
+- **Follow-up observed, not changed:** prerendered pages are absent from the Workbox precache manifest because the PWA plugin runs before the prerender step. Harmless today — there is no `navigateFallback`, and `index.html` unregisters all service workers on load, so the SW is inert. Worth revisiting if the PWA is ever re-enabled.
 
 ---
 

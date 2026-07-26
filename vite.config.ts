@@ -2,50 +2,53 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import sitemap from 'vite-plugin-sitemap';
+import { SITEMAP_ROUTES } from './src/lib/routes';
 
-export default defineConfig({
+// The SSR build exists only to feed scripts/prerender.mjs, so the plugins that
+// emit site assets (sitemap, service worker) are skipped for it — they belong
+// to the client build that actually ships.
+export default defineConfig(({ isSsrBuild }) => ({
   plugins: [
     react({
       jsxRuntime: 'automatic'
     }),
-    sitemap({
-      hostname: 'https://funtastictaxitours.com',
-      dynamicRoutes: [
-        '/services',
-        '/rates-and-zones',
-        '/reviews',
-        '/faq',
-        '/contact',
-      ],
-      exclude: ['/404', '/500', '/offline'],
-      // This plugin generates dist/robots.txt and overwrites public/robots.txt,
-      // so the admin disallow rules must be declared here to reach production.
-      robots: [
-        { userAgent: '*', allow: '/', disallow: ['/admin', '/admin/'] },
-      ],
-    }),
-    VitePWA({
-      registerType: 'autoUpdate',
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
+    ...(isSsrBuild
+      ? []
+      : [
+          sitemap({
+            hostname: 'https://funtastictaxitours.com',
+            dynamicRoutes: [...SITEMAP_ROUTES],
+            exclude: ['/404', '/500', '/offline'],
+            // This plugin generates dist/robots.txt and overwrites
+            // public/robots.txt, so the admin disallow rules must be declared
+            // here to reach production.
+            robots: [
+              { userAgent: '*', allow: '/', disallow: ['/admin', '/admin/'] },
+            ],
+          }),
+          VitePWA({
+            registerType: 'autoUpdate',
+            workbox: {
+              globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
+              runtimeCaching: [
+                {
+                  urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+                  handler: 'CacheFirst',
+                  options: {
+                    cacheName: 'google-fonts-cache',
+                    expiration: {
+                      maxEntries: 10,
+                      maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                    },
+                    cacheableResponse: {
+                      statuses: [0, 200]
+                    }
+                  }
+                }
+              ]
             }
-          }
-        ]
-      }
-    })
+          })
+        ])
   ],
   optimizeDeps: {
     include: ['sweetalert2'],
@@ -55,10 +58,12 @@ export default defineConfig({
     cssCodeSplit: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['lucide-react', 'swiper']
-        }
+        manualChunks: isSsrBuild
+          ? undefined
+          : {
+              vendor: ['react', 'react-dom', 'react-router-dom'],
+              ui: ['lucide-react', 'swiper']
+            }
       }
     },
     chunkSizeWarningLimit: 2048,
@@ -81,4 +86,4 @@ export default defineConfig({
       'Referrer-Policy': 'strict-origin-when-cross-origin'
     }
   }
-});
+}));

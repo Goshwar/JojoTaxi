@@ -99,7 +99,10 @@ const Home: React.FC = () => {
                 className="h-full w-full object-cover"
                 loading={slide.priority ? 'eager' : 'lazy'}
                 decoding={slide.priority ? 'sync' : 'async'}
-                fetchPriority={slide.priority ? 'high' : 'low'}
+                // React 18 drops unknown camelCase props, so `fetchPriority`
+                // never reached the DOM. Spread the lowercase attribute the
+                // browser actually reads.
+                {...{ fetchpriority: slide.priority ? 'high' : 'low' }}
               />
             </SwiperSlide>
           ))}
