@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
 import { breadcrumbSchema } from '../lib/schema';
+import { BUSINESS_PROFILES } from '../lib/site';
 
 interface Review {
   id: string;
@@ -143,6 +144,21 @@ const Reviews: React.FC = () => {
           >
             Leave a Review
           </button>
+          {/* A followable link to the TripAdvisor listing, not just a sameAs
+              entry in the schema. Search and AI engines weigh a corroborating
+              third-party profile they can actually reach. */}
+          <p className="mt-4 text-gray-600">
+            You can also{' '}
+            <a
+              href={BUSINESS_PROFILES.tripadvisor}
+              target="_blank"
+              rel="noopener"
+              className="text-turquoise underline"
+            >
+              read and leave reviews on TripAdvisor
+            </a>
+            .
+          </p>
         </div>
       </section>
 

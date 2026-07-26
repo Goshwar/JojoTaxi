@@ -20,6 +20,7 @@ const {
   routeFare,
   AIRPORT_NAMES,
   TOURS,
+  BUSINESS_PROFILES,
 } = await import(join(root, 'dist-ssr', 'entry-server.js'));
 
 const routeLines = TRANSFER_ROUTES.map(
@@ -49,6 +50,7 @@ Contact: +1 758 486 0790 (phone and WhatsApp) · funtastictaxitours@gmail.com
 Booking: ${SITE_URL}/booking
 Service area: island-wide across Saint Lucia
 Languages: English
+Reviews: ${BUSINESS_PROFILES.tripadvisor}
 
 ## Services
 

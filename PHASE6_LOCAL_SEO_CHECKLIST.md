@@ -131,14 +131,20 @@ Review count, rating, recency and *keywords inside review text* all feed local r
 
 ---
 
-## 7. TripAdvisor — the AI citation source
+## 7. TripAdvisor — the AI citation source ✅ listing exists
 
-TripAdvisor is the single most-cited source when AI assistants recommend Caribbean transport operators. Being absent means being invisible in exactly those answers.
+TripAdvisor is the single most-cited source when AI assistants recommend Caribbean transport operators.
 
-- [ ] Create a listing as a **Transportation / Tours & Activities** operator
-- [ ] Same NAP as section 1; link to `https://funtastictaxitours.com`
+**Live listing:** [FUNtastic Taxi & Tours, Castries](https://www.tripadvisor.com/Attraction_Review-g147343-d33249587-Reviews-FUNtastic_Taxi_Tours-Castries_Castries_Quarter_St_Lucia.html)
+
+Already wired into the site: it is in the `sameAs` structured data on every page, in `llms.txt`, and linked from `/reviews`.
+
+Remaining on TripAdvisor itself:
+- [ ] Confirm the listing's NAP matches section 1 exactly, and that the website field points to `https://funtastictaxitours.com`
+- [ ] Add photos — same set as the Google profile
 - [ ] Add tour listings matching the Phase 5 pages
-- [ ] Ask tour customers for a TripAdvisor review specifically (transfer customers → Google; tour customers → TripAdvisor)
+- [ ] **Split your review asks:** transfer customers → Google, tour customers → TripAdvisor. Spreading them builds both profiles instead of one.
+- [ ] Reply to reviews here as well as on Google
 
 ---
 
@@ -166,10 +172,13 @@ Expect **4–8 weeks** before rankings move meaningfully, and longer for a new G
 
 ## 9. Feed the results back into the code
 
-Once the profiles exist, their URLs belong in the site's structured data. The `sameAs` array in `src/lib/schema.ts` currently holds only the WhatsApp link — each profile URL added there strengthens how confidently Google and AI engines identify you as one real, verifiable business.
+Profile URLs live in `BUSINESS_PROFILES` in `src/lib/site.ts`, which feeds both the `sameAs` structured data and `llms.txt`. Each verified profile added there strengthens how confidently Google and AI engines identify you as one real, verifiable business.
 
-- [ ] Send me the **Google Business Profile URL**, **TripAdvisor URL**, and any **social profiles** (Facebook, Instagram)
-- [ ] I add them to `sameAs` — a one-line change each
+- [x] TripAdvisor — added
+- [x] WhatsApp — added
+- [ ] Send me the **Google Business Profile URL** once verified
+- [ ] Send me any **social profiles** (Facebook, Instagram)
+- [ ] Each is a one-line addition to `BUSINESS_PROFILES`
 - [ ] Also still outstanding from Phase 5: **drive time/distance for the Soufrière and Marigot Bay corridors**, and **tour pricing**, if you want those published
 
 ---
@@ -179,7 +188,7 @@ Once the profiles exist, their URLs belong in the site's structured data. The `s
 1. **Google Business Profile** — created, verified, categories set, 10 photos, first reviews coming in
 2. **Search Console** — verified, sitemap submitted, baseline recorded
 3. **Bing Places** — 15 minutes via Google import; matters for ChatGPT
-4. **TripAdvisor** — matters for AI travel recommendations
+4. ~~TripAdvisor listing~~ ✅ done — now just photos, tour listings and review flow
 5. Everything else
 
 ## Things that will actively hurt you

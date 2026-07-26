@@ -1,4 +1,4 @@
-import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, absoluteUrl } from './site';
+import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, BUSINESS_PROFILES, absoluteUrl } from './site';
 
 /**
  * schema.org structured data for the site.
@@ -60,9 +60,10 @@ export const taxiServiceSchema = {
     { '@type': 'Place', name: 'Marigot Bay' },
   ],
   availableLanguage: [{ '@type': 'Language', name: 'English' }],
-  // Add Google Business Profile, TripAdvisor and social URLs here as they are
-  // created — see issue #6. Each one strengthens entity recognition.
-  sameAs: ['https://wa.me/17584860790'],
+  // Sourced from BUSINESS_PROFILES so the schema and llms.txt cannot list
+  // different profiles. Add Google Business Profile and socials there as they
+  // are created — see issue #6.
+  sameAs: Object.values(BUSINESS_PROFILES),
   hasOfferCatalog: {
     '@type': 'OfferCatalog',
     name: 'Transportation Services',
