@@ -8,6 +8,9 @@
  *  - '/login', '/admin/*'     — private
  *  - any de-routed page (e.g. Fleet & Drivers) — dormant by owner decision
  */
+import { TRANSFER_ROUTES } from '../data/transferRoutes';
+import { TOURS } from '../data/tours';
+
 export const PRERENDER_ROUTES = [
   '/',
   '/services',
@@ -15,7 +18,11 @@ export const PRERENDER_ROUTES = [
   '/reviews',
   '/faq',
   '/contact',
-] as const;
+  // Corridor and tour landing pages are derived from their data files, so a
+  // new entry there is prerendered and listed in the sitemap automatically.
+  ...TRANSFER_ROUTES.map((r) => `/airport-transfers/${r.slug}`),
+  ...TOURS.map((t) => `/tours/${t.slug}`),
+];
 
 /** Sitemap entries other than the homepage, which vite-plugin-sitemap adds itself. */
 export const SITEMAP_ROUTES = PRERENDER_ROUTES.filter((r) => r !== '/');

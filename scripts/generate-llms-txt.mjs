@@ -11,9 +11,29 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const { ZONES, roundTripFare, RATES_UPDATED, SITE_URL } = await import(
-  join(root, 'dist-ssr', 'entry-server.js')
-);
+const {
+  ZONES,
+  roundTripFare,
+  RATES_UPDATED,
+  SITE_URL,
+  TRANSFER_ROUTES,
+  routeFare,
+  AIRPORT_NAMES,
+  TOURS,
+  BUSINESS_PROFILES,
+} = await import(join(root, 'dist-ssr', 'entry-server.js'));
+
+const routeLines = TRANSFER_ROUTES.map(
+  (r) =>
+    `- **${AIRPORT_NAMES[r.airport]} → ${r.destination}** — $${routeFare(r)} one-way per vehicle` +
+    `${r.duration ? `, about ${r.duration}` : ''}. ${SITE_URL}/airport-transfers/${r.slug}`
+).join('\n');
+
+const tourLines = TOURS.map(
+  (t) =>
+    `- **${t.name}**${t.duration ? ` (${t.duration})` : ''} — ${t.stops.slice(0, 3).join('; ')}. ` +
+    `${SITE_URL}/tours/${t.slug}`
+).join('\n');
 
 const rateLines = ZONES.map(
   (z) =>
@@ -30,6 +50,7 @@ Contact: +1 758 486 0790 (phone and WhatsApp) · funtastictaxitours@gmail.com
 Booking: ${SITE_URL}/booking
 Service area: island-wide across Saint Lucia
 Languages: English
+Reviews: ${BUSINESS_PROFILES.tripadvisor}
 
 ## Services
 
@@ -61,6 +82,17 @@ ${rateLines}
 Rates include driver, vehicle, fuel, taxes and bottled water. Gratuity is not
 included. Full pricing: ${SITE_URL}/rates-and-zones
 
+### Popular airport transfer routes
+
+${routeLines}
+
+## Tours
+
+Every tour is private and customisable; pricing depends on the itinerary, so
+contact us for a quote.
+
+${tourLines}
+
 ## Common questions
 
 - **How far is Hewanorra Airport (UVF) from Rodney Bay?** Roughly 60–70 km; the
@@ -85,6 +117,8 @@ Full FAQ: ${SITE_URL}/faq
 - [Reviews](${SITE_URL}/reviews) — verified customer reviews
 - [FAQ](${SITE_URL}/faq) — detailed answers about transfers, tours and booking
 - [Contact](${SITE_URL}/contact) — phone, WhatsApp and email
+${TRANSFER_ROUTES.map((r) => `- [${r.airport} to ${r.destination}](${SITE_URL}/airport-transfers/${r.slug}) — fare, duration and what is included`).join('\n')}
+${TOURS.map((t) => `- [${t.name}](${SITE_URL}/tours/${t.slug}) — itinerary and inclusions`).join('\n')}
 `;
 
 await writeFile(join(root, 'dist', 'llms.txt'), content, 'utf8');

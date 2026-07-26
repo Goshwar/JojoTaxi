@@ -2,7 +2,12 @@
 
 **Companion documents:** `SEO_GEO_AUDIT.md` (findings & gap table) · `GITHUB_ISSUES_GUIDE.md` (tracking protocol)
 **Tracking:** GitHub issues [#1](https://github.com/Goshwar/JojoTaxi/issues/1)–[#6](https://github.com/Goshwar/JojoTaxi/issues/6), one per phase.
-**Status:** D1–D3 resolved. Phases 1–4 complete (issues #1–#4). Phase 5 next.
+**Status:** Phases 1–4 merged in PR #7. Phase 5 complete (issue #5). Phase 6 remaining — mostly non-code.
+
+> ### Open item for the owner: two unverified figures
+> `src/data/transferRoutes.ts` carries `duration`/`distance` only for UVF → Rodney Bay, which is sourced from the published FAQ answer. The Soufrière and Marigot Bay corridors have **no drive time or distance** because none is published anywhere on the site, and inventing one would put a wrong figure into page copy, schema and `llms.txt` at once. Fill those two fields in and the pages pick them up automatically.
+>
+> Tour pages likewise show **no price** — there is no published tour price list to derive one from. Add a `price` field to `src/data/tours.ts` when confirmed.
 
 > ### Standing rule — do not activate dormant routes
 > Some pages exist in the codebase but are deliberately **not routed** (currently
@@ -190,6 +195,14 @@ Sitemap: <SITE_URL>/sitemap.xml
 5. i18n keys added to `src/locales/{en,fr,de}.json`.
 
 **Verify (before closing #5):** each new page prerenders with unique meta + schema; internal links resolve; lint/build pass.
+
+### Implementation notes (as built)
+- Both page types are **data-driven** (`src/data/transferRoutes.ts`, `src/data/tours.ts`) behind dynamic routes (`/airport-transfers/:slug`, `/tours/:slug`). Adding a corridor or tour is a data entry — the page, prerendering, sitemap and `llms.txt` all follow automatically from `PRERENDER_ROUTES`.
+- Corridor fares are **looked up from `ZONES`**, never restated, so the landing pages, the rates table and `llms.txt` cannot disagree. Verified: Rodney Bay $100/$180, Soufrière $65/$117, Marigot Bay $90/$162 — matching the zone table in both page copy and the `Offer` schema.
+- Each corridor emits `Service` + `Offer` schema with `price`, `priceCurrency` and a description stating **per vehicle**, so an engine answering "how much is a taxi from UVF to Rodney Bay" gets a number with correct units. Tours emit `TouristTrip` with an itinerary `ItemList`.
+- Unknown slugs redirect rather than render an empty shell (`/airport-transfers/*` → rates page, `/tours/*` → services).
+- **Pre-existing defect fixed:** `/faq` had **no `<h1>`** — its hero used `SectionHeading`, which renders `<h2>`. The site's most citation-valuable page was missing its top-level heading. Now a real `<h1>`, matching the other pages' hero markup.
+- Nothing dormant was activated; `FleetAndDrivers.tsx` remains unrouted.
 
 ---
 

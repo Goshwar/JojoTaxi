@@ -17,6 +17,8 @@ import Faq from './pages/Faq';
 import Contact from './pages/Contact';
 import ThankYou from './pages/ThankYou';
 import Booking from './pages/Booking';
+import TransferRoute from './pages/TransferRoute';
+import Tour from './pages/Tour';
 
 // Admin pages
 import Login from './pages/admin/Login';
@@ -154,6 +156,8 @@ function App() {
 <Route path="/rates-and-zones" element={<RatesAndZones />} />
                       <Route path="/reviews" element={<Reviews />} />
                       <Route path="/faq" element={<Faq />} />
+                      <Route path="/airport-transfers/:slug" element={<TransferRoute />} />
+                      <Route path="/tours/:slug" element={<Tour />} />
                       <Route path="/contact" element={<Contact />} />
                       <Route path="/thank-you" element={<ThankYou />} />
                       <Route path="*" element={<NotFound />} />

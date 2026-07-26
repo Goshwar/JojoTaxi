@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import SectionHeading from '../components/ui/SectionHeading';
 import FaqItem from '../components/ui/FaqItem';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
@@ -128,12 +127,15 @@ const Faq: React.FC = () => {
 
       {/* Hero Banner */}
       <section style={{ background: 'var(--color-bg-soft)', padding: '4rem 1.5rem' }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-          <SectionHeading
-            title="Frequently Asked Questions"
-            subtitle="Everything you need to know about getting around St. Lucia with FUNtastic Taxi & Tours."
-            align="center"
-          />
+        {/* A real <h1>, not SectionHeading (which renders <h2>): this page had
+            no top-level heading, leaving the site's most-cited page without
+            one. Markup mirrors the hero on the other public pages. */}
+        <div style={{ maxWidth: '860px', margin: '0 auto' }} className="text-center">
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">Frequently Asked Questions</h1>
+          <p className="text-xl text-gray-600">
+            Everything you need to know about getting around St. Lucia with FUNtastic Taxi &amp; Tours.
+          </p>
+          <div className="h-1 w-20 bg-turquoise mt-4 mx-auto" />
         </div>
       </section>
 
