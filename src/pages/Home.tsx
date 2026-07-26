@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { ChevronDown, SmilePlus, Award, Clock, ShieldCheck } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade, Navigation, Pagination } from 'swiper/modules';
@@ -13,6 +12,14 @@ import HomepageServiceCard from '../components/ui/HomepageServiceCard';
 import TrustBar from '../components/ui/TrustBar';
 import { useInView } from '../hooks/useInView';
 import { supabase } from '../lib/supabase';
+import Seo from '../components/ui/Seo';
+import JsonLd from '../components/ui/JsonLd';
+import { webSiteSchema } from '../lib/schema';
+
+/** Minimal shape of the Swiper instance attached to the slider element. */
+interface SwiperInstance {
+  autoplay?: { stop: () => void };
+}
 
 interface Review {
   id: string;
@@ -37,10 +44,9 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const swiperEl = document.querySelector('.hero-slider');
-    if (mediaQuery.matches && swiperEl) {
-      const swiperInstance = (swiperEl as any).swiper;
-      if (swiperInstance?.autoplay) swiperInstance.autoplay.stop();
+    const swiperEl = document.querySelector<HTMLElement & { swiper?: SwiperInstance }>('.hero-slider');
+    if (mediaQuery.matches && swiperEl?.swiper?.autoplay) {
+      swiperEl.swiper.autoplay.stop();
     }
   }, []);
 
@@ -67,12 +73,12 @@ const Home: React.FC = () => {
 
   return (
     <div>
-      <Helmet>
-        <title>FUNtastic Taxi &amp; Tours | St. Lucia Airport Transfers &amp; Island Tours</title>
-        <meta name="description" content="Private airport transfers, island tours and taxi service in St. Lucia. Book online instantly with FUNtastic — St. Lucia's local taxi and tour experts." />
-        <meta property="og:title" content="FUNtastic Taxi & Tours | St. Lucia Airport Transfers & Island Tours" />
-        <meta property="og:url" content="https://funtastictaxiandtours.netlify.app/" />
-      </Helmet>
+      <Seo
+        title="FUNtastic Taxi & Tours | St. Lucia Airport Transfers & Island Tours"
+        description="Private airport transfers, island tours and taxi service in St. Lucia. Book online instantly with FUNtastic — St. Lucia's local taxi and tour experts."
+        path="/"
+      />
+      <JsonLd data={webSiteSchema} />
 
       {/* Hero Section */}
       <section
@@ -96,7 +102,10 @@ const Home: React.FC = () => {
                 className="h-full w-full object-cover"
                 loading={slide.priority ? 'eager' : 'lazy'}
                 decoding={slide.priority ? 'sync' : 'async'}
-                fetchPriority={slide.priority ? 'high' : 'low'}
+                // React 18 drops unknown camelCase props, so `fetchPriority`
+                // never reached the DOM. Spread the lowercase attribute the
+                // browser actually reads.
+                {...{ fetchpriority: slide.priority ? 'high' : 'low' }}
               />
             </SwiperSlide>
           ))}

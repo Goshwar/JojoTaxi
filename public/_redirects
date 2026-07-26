@@ -1,0 +1,8 @@
+# Consolidate the Netlify subdomain onto the canonical domain so ranking
+# signals are not split across two hostnames.
+https://funtastictaxiandtours.netlify.app/*  https://funtastictaxitours.com/:splat  301!
+
+# SPA fallback — every client-routed path must return the app shell with a 200
+# status, otherwise crawlers receive a 404 for /faq, /services, etc.
+# Must remain the last rule in this file.
+/*  /index.html  200

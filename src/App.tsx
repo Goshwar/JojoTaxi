@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { BookingProvider } from './contexts/BookingContext';
 import Layout from './components/layout/Layout';
@@ -21,7 +21,6 @@ import Booking from './pages/Booking';
 // Admin pages
 import Login from './pages/admin/Login';
 import PublicLogin from './pages/Login';
-import Dashboard from './pages/admin/Dashboard';
 import AdminBookings from './pages/admin/AdminBookings';
 import AdminReviews from './pages/admin/AdminReviews';
 import AdminMessages from './pages/admin/AdminMessages';
@@ -73,12 +72,16 @@ const NotFound = () => (
   </div>
 );
 
+/**
+ * Router-agnostic app tree. The router itself is supplied by the entry point:
+ * BrowserRouter in src/main.tsx for the browser, StaticRouter in
+ * src/entry-server.tsx for build-time prerendering.
+ */
 function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <BookingProvider>
-        <Router>
           <ScrollToTop />
           <Routes>
             {/* Public login */}
@@ -164,7 +167,6 @@ function App() {
               }
             />
           </Routes>
-        </Router>
         </BookingProvider>
       </AuthProvider>
     </ErrorBoundary>

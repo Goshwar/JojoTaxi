@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { Star, X } from 'lucide-react';
 import SectionHeading from '../components/ui/SectionHeading';
 import { useBooking } from '../contexts/BookingContext';
 import ReviewFormModal from '../components/ui/ReviewForm';
 import InlineReviewForm from '../components/ReviewForm';
 import { supabase } from '../lib/supabase';
+import Seo from '../components/ui/Seo';
+import JsonLd from '../components/ui/JsonLd';
+import { breadcrumbSchema } from '../lib/schema';
 
 interface Review {
   id: string;
@@ -116,16 +118,17 @@ const Reviews: React.FC = () => {
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
 
-  const hasActiveFilter = ratingFilter !== null || serviceFilter !== '';
-
   return (
     <div>
-      <Helmet>
-        <title>Customer Reviews | FUNtastic Taxi &amp; Tours St. Lucia</title>
-        <meta name="description" content="Read verified reviews from travelers who used FUNtastic Taxi & Tours in St. Lucia. Share your own experience and photos." />
-        <meta property="og:title" content="Customer Reviews | FUNtastic Taxi & Tours St. Lucia" />
-        <meta property="og:url" content="https://funtastictaxiandtours.netlify.app/reviews" />
-      </Helmet>
+      <Seo
+        title="Customer Reviews | FUNtastic Taxi & Tours St. Lucia"
+        description="Read verified reviews from travelers who used FUNtastic Taxi & Tours in St. Lucia. Share your own experience and photos."
+        path="/reviews"
+      />
+      {/* No AggregateRating here: reviews load from Supabase at runtime, so a
+          rating emitted at build time would not match the prerendered page.
+          See the Phase 3 note in IMPLEMENTATION_PLAN.md. */}
+      <JsonLd data={breadcrumbSchema([{ name: 'Reviews', path: '/reviews' }])} />
 
       {/* Page Header */}
       <section className="bg-turquoise/10 py-20">

@@ -2,45 +2,76 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import sitemap from 'vite-plugin-sitemap';
+import { SITEMAP_ROUTES } from './src/lib/routes';
 
-export default defineConfig({
+// The SSR build exists only to feed scripts/prerender.mjs, so the plugins that
+// emit site assets (sitemap, service worker) are skipped for it — they belong
+// to the client build that actually ships.
+export default defineConfig(({ isSsrBuild }) => ({
   plugins: [
     react({
       jsxRuntime: 'automatic'
     }),
-    sitemap({
-      hostname: 'https://funtastictaxitours.com',
-      dynamicRoutes: [
-        '/services',
-        '/rates-and-zones',
-        '/reviews',
-        '/faq',
-        '/contact',
-      ],
-      exclude: ['/404', '/500', '/offline'],
-    }),
-    VitePWA({
-      registerType: 'autoUpdate',
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
+    ...(isSsrBuild
+      ? []
+      : [
+          sitemap({
+            hostname: 'https://funtastictaxitours.com',
+            dynamicRoutes: [...SITEMAP_ROUTES],
+            exclude: ['/404', '/500', '/offline'],
+            // This plugin generates dist/robots.txt and overwrites
+            // public/robots.txt, so all rules must be declared here to reach
+            // production.
+            //
+            // AI crawlers are listed explicitly so the policy is a deliberate
+            // decision rather than an accident of the wildcard rule: these
+            // engines are how travellers increasingly find transport
+            // operators, and we want the site cited in their answers.
+            robots: [
+              // OpenAI: ChatGPT browsing and search indexing
+              { userAgent: 'GPTBot', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'OAI-SearchBot', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'ChatGPT-User', allow: '/', disallow: ['/admin', '/admin/'] },
+              // Anthropic: Claude
+              { userAgent: 'ClaudeBot', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'Claude-Web', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'anthropic-ai', allow: '/', disallow: ['/admin', '/admin/'] },
+              // Perplexity
+              { userAgent: 'PerplexityBot', allow: '/', disallow: ['/admin', '/admin/'] },
+              // Google Gemini / AI Overviews (separate from Googlebot indexing)
+              { userAgent: 'Google-Extended', allow: '/', disallow: ['/admin', '/admin/'] },
+              // Apple Intelligence, Amazon, and Common Crawl (a training and
+              // retrieval corpus several engines draw on)
+              { userAgent: 'Applebot-Extended', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'Amazonbot', allow: '/', disallow: ['/admin', '/admin/'] },
+              { userAgent: 'CCBot', allow: '/', disallow: ['/admin', '/admin/'] },
+              // Everything else, including Googlebot and Bingbot
+              { userAgent: '*', allow: '/', disallow: ['/admin', '/admin/'] },
+            ],
+          }),
+          VitePWA({
+            registerType: 'autoUpdate',
+            workbox: {
+              globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
+              runtimeCaching: [
+                {
+                  urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+                  handler: 'CacheFirst',
+                  options: {
+                    cacheName: 'google-fonts-cache',
+                    expiration: {
+                      maxEntries: 10,
+                      maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                    },
+                    cacheableResponse: {
+                      statuses: [0, 200]
+                    }
+                  }
+                }
+              ]
             }
-          }
-        ]
-      }
-    })
+          })
+        ])
   ],
   optimizeDeps: {
     include: ['sweetalert2'],
@@ -50,10 +81,12 @@ export default defineConfig({
     cssCodeSplit: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['lucide-react', 'swiper']
-        }
+        manualChunks: isSsrBuild
+          ? undefined
+          : {
+              vendor: ['react', 'react-dom', 'react-router-dom'],
+              ui: ['lucide-react', 'swiper']
+            }
       }
     },
     chunkSizeWarningLimit: 2048,
@@ -76,4 +109,4 @@ export default defineConfig({
       'Referrer-Policy': 'strict-origin-when-cross-origin'
     }
   }
-});
+}));

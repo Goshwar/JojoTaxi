@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import SectionHeading from '../components/ui/SectionHeading';
 import FaqItem from '../components/ui/FaqItem';
+import Seo from '../components/ui/Seo';
+import JsonLd from '../components/ui/JsonLd';
+import { faqPageSchema, breadcrumbSchema } from '../lib/schema';
 
 const categories = [
   {
@@ -115,12 +117,14 @@ const categories = [
 const Faq: React.FC = () => {
   return (
     <div>
-      <Helmet>
-        <title>FAQ | FUNtastic Taxi &amp; Tours St. Lucia</title>
-        <meta name="description" content="Answers to the most common questions about airport transfers, island tours, pricing and booking with FUNtastic Taxi & Tours in St. Lucia." />
-        <meta property="og:title" content="FAQ | FUNtastic Taxi & Tours St. Lucia" />
-        <meta property="og:url" content="https://funtastictaxiandtours.netlify.app/faq" />
-      </Helmet>
+      <Seo
+        title="FAQ | FUNtastic Taxi & Tours St. Lucia"
+        description="Answers to the most common questions about airport transfers, island tours, pricing and booking with FUNtastic Taxi & Tours in St. Lucia."
+        path="/faq"
+      />
+      {/* Generated from the same `categories` data the page renders, so the
+          schema can never drift from the visible answers. */}
+      <JsonLd data={[faqPageSchema(categories), breadcrumbSchema([{ name: 'FAQ', path: '/faq' }])]} />
 
       {/* Hero Banner */}
       <section style={{ background: 'var(--color-bg-soft)', padding: '4rem 1.5rem' }}>
