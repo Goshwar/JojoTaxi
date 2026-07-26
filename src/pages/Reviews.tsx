@@ -7,6 +7,8 @@ import ReviewFormModal from '../components/ui/ReviewForm';
 import InlineReviewForm from '../components/ReviewForm';
 import { supabase } from '../lib/supabase';
 import Seo from '../components/ui/Seo';
+import JsonLd from '../components/ui/JsonLd';
+import { breadcrumbSchema } from '../lib/schema';
 
 interface Review {
   id: string;
@@ -123,6 +125,10 @@ const Reviews: React.FC = () => {
         description="Read verified reviews from travelers who used FUNtastic Taxi & Tours in St. Lucia. Share your own experience and photos."
         path="/reviews"
       />
+      {/* No AggregateRating here: reviews load from Supabase at runtime, so a
+          rating emitted at build time would not match the prerendered page.
+          See the Phase 3 note in IMPLEMENTATION_PLAN.md. */}
+      <JsonLd data={breadcrumbSchema([{ name: 'Reviews', path: '/reviews' }])} />
 
       {/* Page Header */}
       <section className="bg-turquoise/10 py-20">

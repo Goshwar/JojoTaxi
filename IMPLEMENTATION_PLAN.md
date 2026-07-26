@@ -2,7 +2,7 @@
 
 **Companion documents:** `SEO_GEO_AUDIT.md` (findings & gap table) · `GITHUB_ISSUES_GUIDE.md` (tracking protocol)
 **Tracking:** GitHub issues [#1](https://github.com/Goshwar/JojoTaxi/issues/1)–[#6](https://github.com/Goshwar/JojoTaxi/issues/6), one per phase.
-**Status:** D1–D3 resolved. Phase 1 complete (issue #1). Phase 2 complete (issue #2). Phase 3 next.
+**Status:** D1–D3 resolved. Phases 1–3 complete (issues #1, #2, #3). Phase 4 next.
 
 > ### Standing rule — do not activate dormant routes
 > Some pages exist in the codebase but are deliberately **not routed** (currently
@@ -133,6 +133,13 @@ Audit for SSR crashers and guard with `typeof window !== 'undefined'` or lazy-mo
 | `/reviews` (later) | `AggregateRating` once reviews prerender with real data | Supabase `reviews` table |
 
 **Verify (before closing #3):** every prerendered page passes Google Rich Results Test; FAQ page shows FAQPage eligibility; no validator errors.
+
+### Implementation notes (as built)
+- All schema lives in `src/lib/schema.ts` and is emitted through `<JsonLd>` → Helmet → the prerenderer, so it ships in the static HTML rather than appearing only after JavaScript runs.
+- FAQ and Service schema are **generated from the same data the pages render**, so structured data cannot drift from visible copy — a common cause of manual actions.
+- The business entity has a stable `@id` (`/#business`); `WebSite` and every `Service` reference it rather than restating it, so engines resolve one entity instead of several.
+- The static JSON-LD block was removed from `index.html`; keeping it would have given every page two competing business entities.
+- **`AggregateRating` deliberately omitted.** Reviews load from Supabase in the browser, so at prerender time the page has none. Emitting a rating that isn't in the served HTML risks a Google manual action for structured data that doesn't match visible content. To do this properly the reviews need fetching at build time (or an ISR-style rebuild hook) — tracked as a follow-up on issue #3 rather than faked now.
 
 ---
 

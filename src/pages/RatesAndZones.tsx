@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import SectionHeading from '../components/ui/SectionHeading';
 import { useBooking } from '../contexts/BookingContext';
 import Seo from '../components/ui/Seo';
+import JsonLd from '../components/ui/JsonLd';
+import { breadcrumbSchema } from '../lib/schema';
 
 const RatesAndZones: React.FC = () => {
   const { openModal } = useBooking();
@@ -18,6 +20,7 @@ const RatesAndZones: React.FC = () => {
         description="View current transfer prices from Hewanorra Airport (UVF) to all hotels, resorts and zones across St. Lucia."
         path="/rates-and-zones"
       />
+      <JsonLd data={breadcrumbSchema([{ name: 'Rates & Zones', path: '/rates-and-zones' }])} />
 
       {/* Page Header */}
       <section className="bg-turquoise/10 py-20">

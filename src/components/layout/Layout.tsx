@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
 import { useBooking } from '../../contexts/BookingContext';
+import JsonLd from '../ui/JsonLd';
+import { taxiServiceSchema } from '../../lib/schema';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,6 +23,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Business entity, emitted on every public page */}
+      <JsonLd data={taxiServiceSchema} />
       <Header />
       <main className="flex-grow pt-16">
         {children}

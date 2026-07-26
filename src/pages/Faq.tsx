@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import SectionHeading from '../components/ui/SectionHeading';
 import FaqItem from '../components/ui/FaqItem';
 import Seo from '../components/ui/Seo';
+import JsonLd from '../components/ui/JsonLd';
+import { faqPageSchema, breadcrumbSchema } from '../lib/schema';
 
 const categories = [
   {
@@ -120,6 +122,9 @@ const Faq: React.FC = () => {
         description="Answers to the most common questions about airport transfers, island tours, pricing and booking with FUNtastic Taxi & Tours in St. Lucia."
         path="/faq"
       />
+      {/* Generated from the same `categories` data the page renders, so the
+          schema can never drift from the visible answers. */}
+      <JsonLd data={[faqPageSchema(categories), breadcrumbSchema([{ name: 'FAQ', path: '/faq' }])]} />
 
       {/* Hero Banner */}
       <section style={{ background: 'var(--color-bg-soft)', padding: '4rem 1.5rem' }}>

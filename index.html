@@ -34,44 +34,11 @@
     <meta data-rh="true" name="twitter:description" content="Private airport transfers, island tours and taxi service in St. Lucia. Book online instantly." />
     <meta data-rh="true" name="twitter:image" content="https://funtastictaxitours.com/Images/pitons-1.jpg" />
 
-    <!-- LocalBusiness Schema -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "LocalBusiness",
-      "name": "FUNtastic Taxi and Tours",
-      "description": "St. Lucia private airport transfers, island tours, and taxi service. Licensed local experts available 24/7.",
-      "url": "https://funtastictaxitours.com",
-      "telephone": "+17584860790",
-      "email": "funtastictaxitours@gmail.com",
-      "priceRange": "$$",
-      "openingHours": "Mo-Su 00:00-24:00",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Castries",
-        "addressRegion": "Saint Lucia",
-        "addressCountry": "LC"
-      },
-      "geo": {
-        "@type": "GeoCoordinates",
-        "latitude": "14.0101",
-        "longitude": "-60.9874"
-      },
-      "sameAs": [
-        "https://wa.me/17584860790"
-      ],
-      "hasOfferCatalog": {
-        "@type": "OfferCatalog",
-        "name": "Transportation Services",
-        "itemListElement": [
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Airport Transfer" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Island Tour" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Group Charter" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Wedding Transfer" } }
-        ]
-      }
-    }
-    </script>
+    <!--
+      Structured data now lives in src/lib/schema.ts and is emitted per page via
+      <JsonLd>, so it is captured by the build-time prerenderer. Keeping a copy
+      here as well would give every page two competing business entities.
+    -->
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

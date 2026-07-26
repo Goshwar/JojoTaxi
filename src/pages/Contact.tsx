@@ -4,6 +4,8 @@ import { Phone, Mail, MapPin, MessageSquare } from 'lucide-react';
 import SectionHeading from '../components/ui/SectionHeading';
 import { useBooking } from '../contexts/BookingContext';
 import Seo from '../components/ui/Seo';
+import JsonLd from '../components/ui/JsonLd';
+import { breadcrumbSchema } from '../lib/schema';
 
 const Contact: React.FC = () => {
   const { openModal } = useBooking();
@@ -19,6 +21,7 @@ const Contact: React.FC = () => {
         description="Get in touch with FUNtastic Taxi & Tours in St. Lucia. Call, WhatsApp or email us — available 24/7 for bookings and enquiries."
         path="/contact"
       />
+      <JsonLd data={breadcrumbSchema([{ name: 'Contact', path: '/contact' }])} />
 
       {/* Page Header */}
       <section className="bg-turquoise/10 py-20">

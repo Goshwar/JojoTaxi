@@ -7,6 +7,46 @@ import 'swiper/css';
 import 'swiper/css/effect-fade';
 import { useBooking } from '../contexts/BookingContext';
 import Seo from '../components/ui/Seo';
+import JsonLd from '../components/ui/JsonLd';
+import { servicesSchema, breadcrumbSchema } from '../lib/schema';
+
+/**
+ * Service names and descriptions, mirrored into Service schema below. Kept
+ * next to NAV_ITEMS so the structured data stays in step with the sections
+ * actually rendered on this page.
+ */
+const SERVICE_DETAILS = [
+  {
+    name: 'Airport Transfers',
+    description:
+      'Professional pickup and drop-off at both Hewanorra International Airport (UVF) and George F.L. Charles Airport (SLU), including flight monitoring, meet & greet, and fixed rates with no hidden fees.',
+  },
+  {
+    name: 'Island Tours',
+    description:
+      "Customized private island tours of St. Lucia, from the iconic Pitons to hidden gems off the beaten path. Half-day or full-day tours tailored to your interests.",
+  },
+  {
+    name: 'Hourly Charter Service',
+    description:
+      'Flexible transportation with a dedicated driver at your disposal for shopping, dining or exploring St. Lucia at your own pace.',
+  },
+  {
+    name: 'Hotel Transfers',
+    description:
+      'Comfortable, air-conditioned private transfers between any hotel or resort on the island.',
+  },
+  {
+    name: 'Wedding Transfers',
+    description:
+      'Elegant, punctual transportation coordinated with your wedding planner so every guest and bridal party arrival is perfectly timed.',
+  },
+  {
+    name: 'Night Out',
+    description:
+      "Reliable evening transport to St. Lucia's restaurants, bars and events, with a safe ride back to your hotel.",
+  },
+];
 
 const NAV_ITEMS = [
   { id: 'airport', label: 'Airport Transfers' },
@@ -124,6 +164,12 @@ const Services: React.FC = () => {
         title="Our Services | FUNtastic Taxi & Tours St. Lucia"
         description="Airport transfers, island tours, hotel transfers, group charters and wedding transportation in St. Lucia. All private, all bookable online."
         path="/services"
+      />
+      <JsonLd
+        data={[
+          ...servicesSchema(SERVICE_DETAILS),
+          breadcrumbSchema([{ name: 'Services', path: '/services' }]),
+        ]}
       />
 
       {/* Hero Banner */}

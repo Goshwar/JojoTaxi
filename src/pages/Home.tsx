@@ -13,6 +13,8 @@ import TrustBar from '../components/ui/TrustBar';
 import { useInView } from '../hooks/useInView';
 import { supabase } from '../lib/supabase';
 import Seo from '../components/ui/Seo';
+import JsonLd from '../components/ui/JsonLd';
+import { webSiteSchema } from '../lib/schema';
 
 /** Minimal shape of the Swiper instance attached to the slider element. */
 interface SwiperInstance {
@@ -76,6 +78,7 @@ const Home: React.FC = () => {
         description="Private airport transfers, island tours and taxi service in St. Lucia. Book online instantly with FUNtastic — St. Lucia's local taxi and tour experts."
         path="/"
       />
+      <JsonLd data={webSiteSchema} />
 
       {/* Hero Section */}
       <section
