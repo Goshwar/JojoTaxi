@@ -1,9 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { Phone, Mail, MapPin, MessageSquare } from 'lucide-react';
 import SectionHeading from '../components/ui/SectionHeading';
 import { useBooking } from '../contexts/BookingContext';
+import Seo from '../components/ui/Seo';
 
 const Contact: React.FC = () => {
   const { openModal } = useBooking();
@@ -14,12 +14,11 @@ const Contact: React.FC = () => {
   };
   return (
     <div>
-      <Helmet>
-        <title>Contact Us | FUNtastic Taxi &amp; Tours St. Lucia</title>
-        <meta name="description" content="Get in touch with FUNtastic Taxi & Tours in St. Lucia. Call, WhatsApp or email us — available 24/7 for bookings and enquiries." />
-        <meta property="og:title" content="Contact Us | FUNtastic Taxi & Tours St. Lucia" />
-        <meta property="og:url" content="https://funtastictaxiandtours.netlify.app/contact" />
-      </Helmet>
+      <Seo
+        title="Contact Us | FUNtastic Taxi & Tours St. Lucia"
+        description="Get in touch with FUNtastic Taxi & Tours in St. Lucia. Call, WhatsApp or email us — available 24/7 for bookings and enquiries."
+        path="/contact"
+      />
 
       {/* Page Header */}
       <section className="bg-turquoise/10 py-20">

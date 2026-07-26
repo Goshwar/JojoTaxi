@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { CheckCircle } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/effect-fade';
 import { useBooking } from '../contexts/BookingContext';
+import Seo from '../components/ui/Seo';
 
 const NAV_ITEMS = [
   { id: 'airport', label: 'Airport Transfers' },
@@ -120,12 +120,11 @@ const Services: React.FC = () => {
 
   return (
     <div>
-      <Helmet>
-        <title>Our Services | FUNtastic Taxi &amp; Tours St. Lucia</title>
-        <meta name="description" content="Airport transfers, island tours, hotel transfers, group charters and wedding transportation in St. Lucia. All private, all bookable online." />
-        <meta property="og:title" content="Our Services | FUNtastic Taxi & Tours St. Lucia" />
-        <meta property="og:url" content="https://funtastictaxiandtours.netlify.app/services" />
-      </Helmet>
+      <Seo
+        title="Our Services | FUNtastic Taxi & Tours St. Lucia"
+        description="Airport transfers, island tours, hotel transfers, group charters and wedding transportation in St. Lucia. All private, all bookable online."
+        path="/services"
+      />
 
       {/* Hero Banner */}
       <section

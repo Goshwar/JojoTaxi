@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { Star, X } from 'lucide-react';
 import SectionHeading from '../components/ui/SectionHeading';
 import { useBooking } from '../contexts/BookingContext';
 import ReviewFormModal from '../components/ui/ReviewForm';
 import InlineReviewForm from '../components/ReviewForm';
 import { supabase } from '../lib/supabase';
+import Seo from '../components/ui/Seo';
 
 interface Review {
   id: string;
@@ -120,12 +120,11 @@ const Reviews: React.FC = () => {
 
   return (
     <div>
-      <Helmet>
-        <title>Customer Reviews | FUNtastic Taxi &amp; Tours St. Lucia</title>
-        <meta name="description" content="Read verified reviews from travelers who used FUNtastic Taxi & Tours in St. Lucia. Share your own experience and photos." />
-        <meta property="og:title" content="Customer Reviews | FUNtastic Taxi & Tours St. Lucia" />
-        <meta property="og:url" content="https://funtastictaxiandtours.netlify.app/reviews" />
-      </Helmet>
+      <Seo
+        title="Customer Reviews | FUNtastic Taxi & Tours St. Lucia"
+        description="Read verified reviews from travelers who used FUNtastic Taxi & Tours in St. Lucia. Share your own experience and photos."
+        path="/reviews"
+      />
 
       {/* Page Header */}
       <section className="bg-turquoise/10 py-20">

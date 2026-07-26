@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { ChevronDown, SmilePlus, Award, Clock, ShieldCheck } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade, Navigation, Pagination } from 'swiper/modules';
@@ -13,6 +12,7 @@ import HomepageServiceCard from '../components/ui/HomepageServiceCard';
 import TrustBar from '../components/ui/TrustBar';
 import { useInView } from '../hooks/useInView';
 import { supabase } from '../lib/supabase';
+import Seo from '../components/ui/Seo';
 
 interface Review {
   id: string;
@@ -67,12 +67,11 @@ const Home: React.FC = () => {
 
   return (
     <div>
-      <Helmet>
-        <title>FUNtastic Taxi &amp; Tours | St. Lucia Airport Transfers &amp; Island Tours</title>
-        <meta name="description" content="Private airport transfers, island tours and taxi service in St. Lucia. Book online instantly with FUNtastic — St. Lucia's local taxi and tour experts." />
-        <meta property="og:title" content="FUNtastic Taxi & Tours | St. Lucia Airport Transfers & Island Tours" />
-        <meta property="og:url" content="https://funtastictaxiandtours.netlify.app/" />
-      </Helmet>
+      <Seo
+        title="FUNtastic Taxi & Tours | St. Lucia Airport Transfers & Island Tours"
+        description="Private airport transfers, island tours and taxi service in St. Lucia. Book online instantly with FUNtastic — St. Lucia's local taxi and tour experts."
+        path="/"
+      />
 
       {/* Hero Section */}
       <section

@@ -18,6 +18,11 @@ export default defineConfig({
         '/contact',
       ],
       exclude: ['/404', '/500', '/offline'],
+      // This plugin generates dist/robots.txt and overwrites public/robots.txt,
+      // so the admin disallow rules must be declared here to reach production.
+      robots: [
+        { userAgent: '*', allow: '/', disallow: ['/admin', '/admin/'] },
+      ],
     }),
     VitePWA({
       registerType: 'autoUpdate',

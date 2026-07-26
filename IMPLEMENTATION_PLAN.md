@@ -2,7 +2,15 @@
 
 **Companion documents:** `SEO_GEO_AUDIT.md` (findings & gap table) · `GITHUB_ISSUES_GUIDE.md` (tracking protocol)
 **Tracking:** GitHub issues [#1](https://github.com/Goshwar/JojoTaxi/issues/1)–[#6](https://github.com/Goshwar/JojoTaxi/issues/6), one per phase.
-**Status:** Awaiting Decision D1 (canonical domain) before Phase 1 begins.
+**Status:** D1–D3 resolved. Phase 1 complete (see issue #1). Phase 2 next.
+
+> ### Standing rule — do not activate dormant routes
+> Some pages exist in the codebase but are deliberately **not routed** (currently
+> `src/pages/FleetAndDrivers.tsx`). They were de-routed because the underlying
+> operation isn't at scale yet — there is no multi-vehicle fleet or driver roster
+> to show. They stay in the repo for a simple reconnect later. **No SEO work may
+> route, link to, add to the sitemap, or otherwise surface a dormant page.** If a
+> phase seems to need one, raise it with the owner instead of enabling it.
 
 This document translates the audit into concrete, file-level engineering work: what changes, in which files, in what order, and how each phase is verified before its issue is closed.
 
@@ -10,21 +18,25 @@ This document translates the audit into concrete, file-level engineering work: w
 
 ## 0. Decisions Required Before Work Starts
 
-| ID | Decision | Options | Blocks |
-|----|----------|---------|--------|
-| **D1** | Canonical domain | **(a)** `funtastictaxitours.com` (recommended if owned & connectable in Netlify) · **(b)** `funtastictaxiandtours.netlify.app` | Phases 1–6 (every URL written anywhere) |
-| **D2** | Prerender approach | **(a)** Custom Vite SSG script (recommended — no new risky deps) · **(b)** `vite-prerender-plugin` | Phase 2 |
-| **D3** | FR/DE strategy | **(a)** Drop hreflang now, revisit URL-based locales later (recommended) · **(b)** Implement `/fr/*`, `/de/*` routes now | Phase 1 item 1.4 |
-
-Defaults: if the owner confirms D1(a), proceed with D2(a) and D3(a) without further sign-off.
+| ID | Decision | Resolution | Blocks |
+|----|----------|------------|--------|
+| **D1** | Canonical domain | ✅ **`funtastictaxitours.com`** — confirmed owned and connected to Netlify (owner, 2026-07-26) | Phases 1–6 (every URL written anywhere) |
+| **D2** | Prerender approach | ✅ **Custom Vite SSG script** — no new risky deps | Phase 2 |
+| **D3** | FR/DE strategy | ✅ **Drop hreflang now**, revisit URL-based locales later | Phase 1 item 1.4 |
 
 A placeholder constant will make the domain swappable in one place:
 
 ```ts
-// src/lib/site.ts (new)
-export const SITE_URL = 'https://funtastictaxitours.com'; // ← D1
+// src/lib/site.ts — shipped in Phase 1
+export const SITE_URL = 'https://funtastictaxitours.com';
 export const SITE_NAME = 'FUNtastic Taxi & Tours';
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/Images/pitons-1.jpg`;
+export const absoluteUrl = (path: string) => …;
 ```
+
+### Two defects found and fixed while implementing Phase 1
+1. **`robots.txt` was being overwritten at build time.** `vite-plugin-sitemap` generates its own `dist/robots.txt`, silently discarding `public/robots.txt` — so `Disallow: /admin` never reached production despite being in source. Fixed by declaring the rules in the plugin's `robots` option in `vite.config.ts`.
+2. **Duplicate meta tags on every page.** Static tags in `index.html` and Helmet's per-page tags coexisted, so crawlers reading the first match got the generic homepage description/og:url on all six pages. Fixed by marking the static tags `data-rh="true"`, which makes react-helmet-async take ownership and replace them.
 
 ---
 
@@ -151,7 +163,7 @@ Sitemap: <SITE_URL>/sitemap.xml
 ## Phase 5 — Content Expansion (Issue #5)
 
 1. **Route landing pages** (new `src/pages/routes/` components, data-driven from an extended `src/data/rates.ts`): `/airport-transfers/uvf-to-rodney-bay`, `/uvf-to-soufriere`, `/uvf-to-marigot-bay`. Each: H1 matching the query, price (ow/rt), duration/distance, what's-included, FAQ subset, `Service` + `BreadcrumbList` schema, CTA to `/booking`.
-2. **Wire up `FleetAndDrivers.tsx`**: route in `App.tsx` (`/fleet-and-drivers`), Header/Footer nav links, sitemap + prerender lists, Seo component.
+2. ~~Wire up `FleetAndDrivers.tsx`~~ — **removed from scope.** The page is intentionally dormant (see standing rule above); it is not to be routed or surfaced until the owner says the fleet/driver roster is ready.
 3. **Tour pages**: `/tours/soufriere-pitons-day-tour`, `/tours/sulphur-springs` — same pattern.
 4. All new routes are added to the single shared route list (sitemap + prerender pick them up automatically).
 5. i18n keys added to `src/locales/{en,fr,de}.json`.

@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import SectionHeading from '../components/ui/SectionHeading';
 import { useBooking } from '../contexts/BookingContext';
+import Seo from '../components/ui/Seo';
 
 const RatesAndZones: React.FC = () => {
   const { openModal } = useBooking();
@@ -13,12 +13,11 @@ const RatesAndZones: React.FC = () => {
   };
   return (
     <div>
-      <Helmet>
-        <title>Rates &amp; Zones | FUNtastic Taxi &amp; Tours St. Lucia</title>
-        <meta name="description" content="View current transfer prices from Hewanorra Airport (UVF) to all hotels, resorts and zones across St. Lucia." />
-        <meta property="og:title" content="Rates & Zones | FUNtastic Taxi & Tours St. Lucia" />
-        <meta property="og:url" content="https://funtastictaxiandtours.netlify.app/rates-and-zones" />
-      </Helmet>
+      <Seo
+        title="Rates & Zones | FUNtastic Taxi & Tours St. Lucia"
+        description="View current transfer prices from Hewanorra Airport (UVF) to all hotels, resorts and zones across St. Lucia."
+        path="/rates-and-zones"
+      />
 
       {/* Page Header */}
       <section className="bg-turquoise/10 py-20">
