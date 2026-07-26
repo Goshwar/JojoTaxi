@@ -1,0 +1,201 @@
+# SEO & GEO Implementation Plan — FUNtastic Taxi & Tours
+
+**Companion documents:** `SEO_GEO_AUDIT.md` (findings & gap table) · `GITHUB_ISSUES_GUIDE.md` (tracking protocol)
+**Tracking:** GitHub issues [#1](https://github.com/Goshwar/JojoTaxi/issues/1)–[#6](https://github.com/Goshwar/JojoTaxi/issues/6), one per phase.
+**Status:** Awaiting Decision D1 (canonical domain) before Phase 1 begins.
+
+This document translates the audit into concrete, file-level engineering work: what changes, in which files, in what order, and how each phase is verified before its issue is closed.
+
+---
+
+## 0. Decisions Required Before Work Starts
+
+| ID | Decision | Options | Blocks |
+|----|----------|---------|--------|
+| **D1** | Canonical domain | **(a)** `funtastictaxitours.com` (recommended if owned & connectable in Netlify) · **(b)** `funtastictaxiandtours.netlify.app` | Phases 1–6 (every URL written anywhere) |
+| **D2** | Prerender approach | **(a)** Custom Vite SSG script (recommended — no new risky deps) · **(b)** `vite-prerender-plugin` | Phase 2 |
+| **D3** | FR/DE strategy | **(a)** Drop hreflang now, revisit URL-based locales later (recommended) · **(b)** Implement `/fr/*`, `/de/*` routes now | Phase 1 item 1.4 |
+
+Defaults: if the owner confirms D1(a), proceed with D2(a) and D3(a) without further sign-off.
+
+A placeholder constant will make the domain swappable in one place:
+
+```ts
+// src/lib/site.ts (new)
+export const SITE_URL = 'https://funtastictaxitours.com'; // ← D1
+export const SITE_NAME = 'FUNtastic Taxi & Tours';
+```
+
+---
+
+## Phase 1 — Foundation Fixes (Issue #1)
+
+**Goal:** one domain identity, crawlable deep links, canonical signals. All changes are small and independent; ship as one PR.
+
+### 1.1 Netlify SPA fallback + domain redirect — `public/_redirects` (new)
+```
+# Redirect Netlify subdomain to canonical domain (D1)
+https://funtastictaxiandtours.netlify.app/* https://funtastictaxitours.com/:splat 301!
+
+# SPA fallback — must be last
+/* /index.html 200
+```
+Note: `public/404.html` stays (used by the offline/service-worker flow) but the fallback rule means Netlify no longer serves it with a 404 status for real routes.
+
+### 1.2 Canonical + per-page URL component — `src/components/ui/Seo.tsx` (new)
+A tiny wrapper around Helmet so every page declares the same set of tags consistently:
+
+```tsx
+interface SeoProps { title: string; description: string; path: string; image?: string }
+// Renders: <title>, meta description, <link rel="canonical" href={SITE_URL + path}>,
+// og:title/og:description/og:url/og:image (absolute), twitter:card/title/description/image
+```
+Refactor the six public pages (`Home`, `Services`, `RatesAndZones`, `Reviews`, `Faq`, `Contact`) to use `<Seo …/>` instead of their hand-rolled Helmet blocks. This kills the netlify.app og:urls in one sweep.
+
+### 1.3 `index.html` cleanup
+- Remove `meta keywords` (line 9).
+- Fix `og:image` → `${SITE_URL}/Images/pitons-1.jpg` (absolute; see 1.5), add `og:image:width/height`, `og:locale`, `twitter:image`.
+- Update JSON-LD `url` field to `SITE_URL` (full schema overhaul happens in Phase 3).
+
+### 1.4 hreflang (D3a)
+Remove the three `<link rel="alternate" hreflang…>` tags from `index.html` — `/fr` and `/de` don't exist as URLs, so the tags are actively harmful. Re-introduce with `x-default` only if/when URL-based locales ship.
+
+### 1.5 Share image
+Copy `public/Images/Pitons 1.jpg` → `public/Images/pitons-1.jpg` (no space; keep original to avoid breaking the hero slider) and point og/twitter tags at it.
+
+### 1.6 Align sitemap + robots to D1
+- `vite.config.ts` sitemap `hostname` ← `SITE_URL`.
+- `public/robots.txt` `Sitemap:` line ← `SITE_URL/sitemap.xml`.
+
+**Verify (before closing #1):** `npm run build && npm run lint` pass; built `dist/index.html` contains no `netlify.app` references (grep); after deploy, `curl -I <domain>/faq` → 200, and a WhatsApp share preview shows the image.
+
+---
+
+## Phase 2 — Build-Time Prerendering (Issue #2) — the big lever
+
+**Approach (D2a): custom Vite SSG script.** Standard two-entry Vite SSR pattern, no headless browser, no unmaintained plugins.
+
+### 2.1 Restructure entries
+- `src/App.tsx` stays as-is (owns providers + routes), but `BrowserRouter` moves out to the client entry so the server render can use `StaticRouter`.
+- `src/main.tsx` (client): switch `createRoot(...).render(...)` → `hydrateRoot(container, app)` **when the container has children** (prerendered page), falling back to `createRoot` (dev, `/booking`, `/admin`).
+- `src/entry-server.tsx` (new): exports `render(url)` → `{ html, helmet }` using `ReactDOMServer.renderToString`, `StaticRouter`, and `HelmetProvider` context.
+
+### 2.2 Prerender script — `scripts/prerender.mjs` (new)
+Post-build step (`"build": "vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs"`):
+1. Routes: `/`, `/services`, `/rates-and-zones`, `/reviews`, `/faq`, `/contact` (import the list from one shared module also used by the sitemap config).
+2. For each route: call `render(url)`, inject `html` into `dist/index.html`'s `<div id="root">`, replace head tags with Helmet output, write `dist/<route>/index.html`.
+3. Explicitly **skip** `/booking`, `/thank-you`, `/admin/*`, `/login`.
+
+### 2.3 Browser-only guards
+Audit for SSR crashers and guard with `typeof window !== 'undefined'` or lazy-mount:
+- Swiper init in `Home.tsx` (`document.querySelector`), service-worker code, `WhatsAppWidget`, `CookieConsent`, Supabase calls in `Reviews.tsx` (render with empty state server-side; hydrate fetches live data).
+- i18next: force `lng: 'en'` during SSR (language detector needs `navigator`), so prerendered HTML is English; client re-detects on hydration.
+
+### 2.4 Service worker interaction
+`NetworkFirst` for HTML is already correct for prerendered pages — verify the PWA `navigateFallback` doesn't shadow the static route files.
+
+**Verify (before closing #2):** `grep -l "Hewanorra" dist/faq/index.html` succeeds; each prerendered file contains its own unique `<title>` and canonical; no hydration warnings in dev console; Lighthouse SEO score ≥ 95; after deploy, `curl <domain>/rates-and-zones` shows rate figures without JS.
+
+---
+
+## Phase 3 — Structured Data (Issue #3)
+
+### 3.1 `src/components/ui/JsonLd.tsx` (new)
+`<JsonLd data={object}/>` → renders `<script type="application/ld+json">` via Helmet (so it's captured by Phase 2 prerendering — this ordering is why Phase 3 follows Phase 2).
+
+### 3.2 Schema blocks
+| Page | Schema | Source of truth |
+|------|--------|-----------------|
+| `/faq` | `FAQPage` (16 Q&As) | generated from the existing `categories` array — zero duplication |
+| all pages | `TaxiService` (upgraded from LocalBusiness; add `areaServed`, `availableLanguage`, real `sameAs`) | moved from `index.html` into `Layout` via `JsonLd` |
+| `/services` | `Service` per offering | services array in `Services.tsx` |
+| subpages | `BreadcrumbList` | route path |
+| `/` | `WebSite` | `SITE_URL` |
+| `/reviews` (later) | `AggregateRating` once reviews prerender with real data | Supabase `reviews` table |
+
+**Verify (before closing #3):** every prerendered page passes Google Rich Results Test; FAQ page shows FAQPage eligibility; no validator errors.
+
+---
+
+## Phase 4 — GEO Layer (Issue #4)
+
+### 4.1 `public/llms.txt` (new)
+Markdown profile per the llms.txt convention: business identity, services (airport transfers UVF/SLU, private tours, charters, weddings), coverage (island-wide), sample prices from `src/data/rates.ts` with "per vehicle" units and an as-of date, contact (phone/WhatsApp/email), booking URL, languages (EN/FR/DE), licensing/credential notes.
+
+### 4.2 `public/robots.txt` — explicit AI-crawler policy
+```
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: PerplexityBot
+User-agent: Google-Extended
+User-agent: CCBot
+User-agent: Amazonbot
+Allow: /
+Disallow: /admin
+
+User-agent: *
+Allow: /
+Disallow: /admin
+
+Sitemap: <SITE_URL>/sitemap.xml
+```
+
+### 4.3 Citation-friendly rates
+`RatesAndZones.tsx`: add visible "Rates updated: <month year> · all prices per vehicle, USD" line (also lands in prerendered HTML and llms.txt).
+
+**Verify (before closing #4):** `<domain>/llms.txt` returns 200 with correct content-type; robots.txt validates in Google's robots tester.
+
+---
+
+## Phase 5 — Content Expansion (Issue #5)
+
+1. **Route landing pages** (new `src/pages/routes/` components, data-driven from an extended `src/data/rates.ts`): `/airport-transfers/uvf-to-rodney-bay`, `/uvf-to-soufriere`, `/uvf-to-marigot-bay`. Each: H1 matching the query, price (ow/rt), duration/distance, what's-included, FAQ subset, `Service` + `BreadcrumbList` schema, CTA to `/booking`.
+2. **Wire up `FleetAndDrivers.tsx`**: route in `App.tsx` (`/fleet-and-drivers`), Header/Footer nav links, sitemap + prerender lists, Seo component.
+3. **Tour pages**: `/tours/soufriere-pitons-day-tour`, `/tours/sulphur-springs` — same pattern.
+4. All new routes are added to the single shared route list (sitemap + prerender pick them up automatically).
+5. i18n keys added to `src/locales/{en,fr,de}.json`.
+
+**Verify (before closing #5):** each new page prerenders with unique meta + schema; internal links resolve; lint/build pass.
+
+---
+
+## Phase 6 — Off-Site & Measurement (Issue #6)
+
+Code touchpoints only (the rest is an owner checklist in the issue):
+1. Search Console + Bing Webmaster verification (DNS record preferred; else meta tag in `Seo`/`index.html`).
+2. Submit sitemap in both consoles after Phase 2 deploy.
+3. Add GBP / TripAdvisor / social URLs to the `sameAs` array (Phase 3 schema) as the owner creates them.
+4. Baseline + monthly review of Search Console coverage and query reports.
+
+---
+
+## Execution Order & Dependency Graph
+
+```
+D1 (domain) ─► Phase 1 ─► Phase 2 ─► Phase 3 ─► Phase 5
+                    │                     │
+                    └────► Phase 4 ◄──────┘   (4 can ship any time after 1; best after 2)
+Phase 6 runs in parallel from Phase 1 onward (owner tasks) — code touchpoints after Phase 2.
+```
+
+Suggested PR breakdown (one PR per phase, each closing its issue via `Closes #n`):
+1. **PR 1** — Phase 1 (small, mechanical, low-risk)
+2. **PR 2** — Phase 2 (the only structurally risky change; test hydration thoroughly)
+3. **PR 3** — Phase 3 + 4 (additive, low-risk)
+4. **PR 4+** — Phase 5 pages, shipped incrementally
+5. Phase 6 — mostly non-code; verification snippets as needed
+
+## Risks & Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| Hydration mismatch after prerender (Swiper, i18n language, Supabase data) | Guard browser-only code (2.3); render deterministic English/empty-state HTML server-side; test every route in dev + preview |
+| Service worker serves stale HTML after deploys | `autoUpdate` is already set; verify `navigateFallback` excludes prerendered routes; bump cache on release |
+| Netlify redirect ordering breaks admin/API paths | SPA fallback rule last; `/admin` unaffected (client-routed); test `/admin/login` post-deploy |
+| Renaming hero image breaks slider | Copy, don't rename (1.5) |
+| Prices in llms.txt/landing pages drift from `rates.ts` | Generate from `rates.ts` at build time where possible; "rates updated" date makes staleness visible |
+
+## Per-Phase Definition of Done
+
+A phase is complete only when: `npm run build` + `npm run lint` pass · phase-specific verification steps above pass · verification evidence posted as an issue comment (per `GITHUB_ISSUES_GUIDE.md`) · the issue is closed via PR (`Closes #n`) or `issue_write` with `state_reason: completed`.
