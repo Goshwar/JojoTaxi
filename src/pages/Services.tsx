@@ -6,6 +6,8 @@ import { Autoplay, EffectFade } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/effect-fade';
 import { useBooking } from '../contexts/BookingContext';
+import { useAfterLoad } from '../hooks/useAfterLoad';
+import ResponsiveImage from '../components/ui/ResponsiveImage';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
 import { servicesSchema, breadcrumbSchema } from '../lib/schema';
@@ -105,40 +107,51 @@ const TextCol: React.FC<{ children: React.ReactNode; reverse?: boolean }> = ({ c
   </div>
 );
 
+/** One half of a two-column band inside the 1280px container. */
+const COLUMN_SIZES = '(min-width: 768px) 50vw, 100vw';
+
 const ImageCol: React.FC<{ src: string; alt: string; reverse?: boolean }> = ({ src, alt, reverse }) => (
   <div className={`relative overflow-hidden h-[280px] md:h-[420px]${reverse ? ' order-1 md:order-2' : ''}`}>
-    <img
+    <ResponsiveImage
       src={src}
       alt={alt}
+      sizes={COLUMN_SIZES}
       className="absolute inset-0 w-full h-full object-cover transition-transform duration-[400ms] ease-in-out hover:scale-[1.03]"
-      loading="lazy"
     />
   </div>
 );
 
-const SwiperCol: React.FC<{ slides: { src: string; alt: string }[]; reverse?: boolean }> = ({ slides, reverse }) => (
-  <div className={`relative overflow-hidden h-[280px] md:h-[420px]${reverse ? ' order-1 md:order-2' : ''}`}>
-    <Swiper
-      modules={[Autoplay, EffectFade]}
-      effect="fade"
-      speed={1000}
-      autoplay={{ delay: 4000, disableOnInteraction: false }}
-      loop={true}
-      className="h-full w-full"
-    >
-      {slides.map(({ src, alt }) => (
-        <SwiperSlide key={src}>
-          <img
-            src={src}
-            alt={alt}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
-        </SwiperSlide>
-      ))}
-    </Swiper>
-  </div>
-);
+const SwiperCol: React.FC<{ slides: { src: string; alt: string }[]; reverse?: boolean }> = ({ slides, reverse }) => {
+  // Same fade-stacking trap as the homepage hero: without this, all 4-5 slides
+  // in every carousel on the page download at once. This page had two of them.
+  const deferredReady = useAfterLoad();
+
+  return (
+    <div className={`relative overflow-hidden h-[280px] md:h-[420px]${reverse ? ' order-1 md:order-2' : ''}`}>
+      <Swiper
+        modules={[Autoplay, EffectFade]}
+        effect="fade"
+        speed={1000}
+        autoplay={{ delay: 4000, disableOnInteraction: false }}
+        loop={true}
+        className="h-full w-full"
+      >
+        {slides.map(({ src, alt }, index) => (
+          <SwiperSlide key={src}>
+            {(index === 0 || deferredReady) && (
+              <ResponsiveImage
+                src={src}
+                alt={alt}
+                sizes={COLUMN_SIZES}
+                className="w-full h-full object-cover"
+              />
+            )}
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    </div>
+  );
+};
 
 const Services: React.FC = () => {
   const { openModal } = useBooking();
@@ -173,17 +186,27 @@ const Services: React.FC = () => {
         ]}
       />
 
-      {/* Hero Banner */}
+      {/* Hero Banner. This was a CSS `background-image`, which no amount of
+          srcset can reach and which the preload scanner only discovers after
+          the stylesheet parses. As a real <img> it is discoverable in the HTML
+          and gets the responsive ladder — and it is this route's LCP element,
+          so it carries the priority hint. */}
       <section
-        className="relative bg-cover bg-center"
+        className="relative overflow-hidden"
         style={{
-          backgroundImage: 'url("/Images/Waterfall 1.jpg")',
           minHeight: '480px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
+        <ResponsiveImage
+          src="/Images/Waterfall 1.jpg"
+          alt="Rainforest waterfall in St. Lucia"
+          sizes="100vw"
+          className="absolute inset-0 w-full h-full object-cover"
+          priority
+        />
         <div className="absolute inset-0" style={{ background: 'rgba(27,42,74,0.75)' }} />
         <div className="container relative z-10 text-center animate-fade-in">
           <h1
@@ -362,12 +385,12 @@ const Services: React.FC = () => {
         className="relative overflow-hidden"
         style={{ padding: '5rem 1.5rem', minHeight: '320px', display: 'flex', alignItems: 'center' }}
       >
-        <img
+        <ResponsiveImage
           src="/Images/Pitons 1.jpg"
           alt="The iconic Pitons of St Lucia"
+          sizes="100vw"
           className="absolute inset-0 w-full h-full object-cover"
           style={{ zIndex: 0 }}
-          loading="lazy"
         />
         <div className="absolute inset-0" style={{ background: 'rgba(27,42,74,0.80)', zIndex: 1 }} />
         <div className="container relative text-center" style={{ zIndex: 2 }}>

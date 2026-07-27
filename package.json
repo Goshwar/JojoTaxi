@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "images": "node scripts/optimize-images.mjs",
+    "perf:budget": "node scripts/check-perf-budget.mjs",
     "build": "vite build && npm run build:ssr && node scripts/prerender.mjs && node scripts/generate-llms-txt.mjs",
     "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist-ssr",
     "lint": "eslint .",
@@ -36,6 +38,7 @@
     "eslint-plugin-react-refresh": "^0.4.5",
     "globals": "^15.15.0",
     "postcss": "^8.4.35",
+    "sharp": "^0.35.3",
     "tailwindcss": "^3.4.1",
     "terser": "^5.27.2",
     "typescript": "^5.3.3",

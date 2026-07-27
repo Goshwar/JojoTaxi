@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import SectionHeading from '../components/ui/SectionHeading';
+import ResponsiveImage from '../components/ui/ResponsiveImage';
 import { useBooking } from '../contexts/BookingContext';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
@@ -109,11 +110,11 @@ const RatesAndZones: React.FC = () => {
                 subtitle="Visual representation of our pricing zones"
               />
               <div className="rounded-xl overflow-hidden shadow-lg">
-                <img 
+                <ResponsiveImage
                   src="/Images/Island Zone.jpg"
                   alt="St. Lucia Transportation Zones Map"
+                  sizes="(min-width: 1024px) 50vw, 100vw"
                   className="w-full h-auto object-cover"
-                  loading="lazy"
                 />
               </div>
             </div>

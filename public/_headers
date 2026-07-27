@@ -1,0 +1,37 @@
+# Netlify response headers.
+#
+# Without this file every asset was served on Netlify's short default cache, so
+# a returning visitor re-downloaded images and JavaScript that had not changed —
+# PageSpeed Insights attributed 5,573 KiB of wasted transfer to it.
+#
+# The rule that makes long caching safe is immutability: a URL must never change
+# what it returns. Vite hashes the filename of everything in /assets, and the
+# generated files in /Images/optimized carry a width in the name and are
+# rewritten wholesale by `npm run images`, so both are safe to pin for a year.
+# HTML is the opposite — it is the document that points at those hashed names,
+# so it must always be revalidated or a deploy would never reach anyone.
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/Images/optimized/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fixed-name assets: the favicon and the Open Graph card keep stable URLs
+# because index.html and social platforms point at them directly, so they can be
+# replaced in place by a deploy. A month of caching with revalidation keeps them
+# cheap without stranding a change.
+/Images/*
+  Cache-Control: public, max-age=2592000, must-revalidate
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Security headers, matching the ones the dev server sets in vite.config.ts.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload

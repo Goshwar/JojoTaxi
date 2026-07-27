@@ -40,10 +40,25 @@
       here as well would give every page two competing business entities.
     -->
 
-    <!-- Fonts -->
+    <!--
+      Fonts. As a plain stylesheet this third-party CSS blocked first paint for a
+      whole DNS + TCP + TLS round trip (~800 ms on throttled mobile per
+      Lighthouse). media="print" makes it a low-priority, non-blocking fetch that
+      onload flips to all; with display=swap in the URL, text paints immediately
+      in the fallback face. The preconnects start the handshakes during parse so
+      that fetch is not also a cold connection.
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap"
+      media="print"
+      onload="this.media='all'; this.onload=null;"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
+    </noscript>
 
     <!-- Print Styles -->
     <style media="print">
@@ -63,14 +78,6 @@
       }
     </style>
 
-    <!-- Unregister stale service workers -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (var reg of registrations) { reg.unregister(); }
-        });
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>

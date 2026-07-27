@@ -1,33 +1,43 @@
-import React from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { BookingProvider } from './contexts/BookingContext';
+import { BookingProvider, useBooking } from './contexts/BookingContext';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/admin/ProtectedRoute';
 import PublicProtectedRoute from './components/ProtectedRoute';
-import AdminLayout from './components/admin/AdminLayout';
-import BookingModal from './components/ui/BookingModal';
 
-// Public pages
+/*
+ * Public pages that scripts/prerender.mjs turns into static HTML are imported
+ * eagerly and must stay that way. Their markup is already inside #root when
+ * the browser parses the document, so a lazy boundary would make React render
+ * a Suspense fallback during hydration — replacing real content with a spinner
+ * and throwing away the whole point of prerendering.
+ *
+ * Everything below that is NOT prerendered (see src/lib/routes.ts) is split
+ * out, which is where the weight is anyway: the admin dashboard and the
+ * booking flow together pull in sweetalert2 and ~2,000 lines that no visitor
+ * reading the homepage will ever execute.
+ */
 import Home from './pages/Home';
 import Services from './pages/Services';
 import RatesAndZones from './pages/RatesAndZones';
 import Reviews from './pages/Reviews';
 import Faq from './pages/Faq';
 import Contact from './pages/Contact';
-import ThankYou from './pages/ThankYou';
-import Booking from './pages/Booking';
 import TransferRoute from './pages/TransferRoute';
 import Tour from './pages/Tour';
 
-// Admin pages
-import Login from './pages/admin/Login';
-import PublicLogin from './pages/Login';
-import AdminBookings from './pages/admin/AdminBookings';
-import AdminReviews from './pages/admin/AdminReviews';
-import AdminMessages from './pages/admin/AdminMessages';
-import AdminRates from './pages/admin/AdminRates';
-import AdminFleet from './pages/admin/AdminFleet';
+const BookingModal = lazy(() => import('./components/ui/BookingModal'));
+const Booking = lazy(() => import('./pages/Booking'));
+const ThankYou = lazy(() => import('./pages/ThankYou'));
+const PublicLogin = lazy(() => import('./pages/Login'));
+const AdminLayout = lazy(() => import('./components/admin/AdminLayout'));
+const Login = lazy(() => import('./pages/admin/Login'));
+const AdminBookings = lazy(() => import('./pages/admin/AdminBookings'));
+const AdminReviews = lazy(() => import('./pages/admin/AdminReviews'));
+const AdminMessages = lazy(() => import('./pages/admin/AdminMessages'));
+const AdminRates = lazy(() => import('./pages/admin/AdminRates'));
+const AdminFleet = lazy(() => import('./pages/admin/AdminFleet'));
 
 // Utilities
 import WhatsAppWidget from './components/ui/WhatsAppWidget';
@@ -38,6 +48,49 @@ import { useScrollToTop } from './utils/scroll';
 const ScrollToTop = () => {
   useScrollToTop();
   return null;
+};
+
+/** Fills the viewport while a split route chunk arrives. */
+const RouteFallback = () => (
+  <div className="min-h-screen flex items-center justify-center" aria-busy="true">
+    <span className="sr-only">Loading…</span>
+    <div
+      className="animate-pulse rounded-full"
+      style={{ width: '2.5rem', height: '2.5rem', background: 'var(--color-teal)', opacity: 0.35 }}
+    />
+  </div>
+);
+
+/**
+ * Mounts the booking modal's chunk only once someone opens it, so sweetalert2
+ * and the 900-line booking form stay out of every public page's initial
+ * download. In modal mode the component already rendered nothing until
+ * `isOpen`, so gating the mount here changes no behaviour.
+ *
+ * The chunk is warmed once the page has finished loading, well before anyone
+ * can realistically click "Book Now" — that keeps the interaction instant
+ * instead of trading a smaller bundle for a visible delay on tap.
+ */
+const DeferredBookingModal: React.FC = () => {
+  const { isOpen } = useBooking();
+
+  useEffect(() => {
+    if (document.readyState === 'complete') {
+      void import('./components/ui/BookingModal');
+      return;
+    }
+    const warm = () => void import('./components/ui/BookingModal');
+    window.addEventListener('load', warm, { once: true });
+    return () => window.removeEventListener('load', warm);
+  }, []);
+
+  if (!isOpen) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <BookingModal mode="modal" />
+    </Suspense>
+  );
 };
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
@@ -85,6 +138,9 @@ function App() {
       <AuthProvider>
         <BookingProvider>
           <ScrollToTop />
+          {/* One boundary for every split route below. The eagerly imported
+              prerendered pages never suspend, so they hydrate untouched. */}
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Public login */}
             <Route path="/login" element={<PublicLogin />} />
@@ -166,11 +222,12 @@ function App() {
                   <WhatsAppWidget />
                   <CookieConsent />
                   {/* Desktop booking modal — rendered outside Layout so it overlays everything */}
-                  <BookingModal mode="modal" />
+                  <DeferredBookingModal />
                 </>
               }
             />
           </Routes>
+          </Suspense>
         </BookingProvider>
       </AuthProvider>
     </ErrorBoundary>

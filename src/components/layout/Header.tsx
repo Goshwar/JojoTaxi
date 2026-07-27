@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Phone, Menu, X, MessageSquare } from 'lucide-react';
 import { useBooking } from '../../contexts/BookingContext';
 import { useScrolled } from '../../hooks/useScrolled';
+import ResponsiveImage from '../ui/ResponsiveImage';
 
 const navLinks = [
   { name: 'Home', path: '/' },
@@ -40,7 +41,15 @@ const Header: React.FC = () => {
       <div className="container flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center">
-          <img src="/Images/Logo.png" alt="FUNtastic Taxi and Tours St. Lucia logo" className="h-12 w-auto" />
+          {/* Renders at 48px square. The source is 1024x1024 and used to ship
+              as a 1.5 MB PNG — the single heaviest asset on every page. */}
+          <ResponsiveImage
+            src="/Images/Logo.png"
+            alt="FUNtastic Taxi and Tours St. Lucia logo"
+            sizes="48px"
+            className="h-12 w-auto"
+            loading="eager"
+          />
         </Link>
 
         {/* Desktop Navigation */}

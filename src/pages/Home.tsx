@@ -8,9 +8,11 @@ import 'swiper/css/effect-fade';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import SectionHeading from '../components/ui/SectionHeading';
+import ResponsiveImage from '../components/ui/ResponsiveImage';
 import HomepageServiceCard from '../components/ui/HomepageServiceCard';
 import TrustBar from '../components/ui/TrustBar';
 import { useInView } from '../hooks/useInView';
+import { useAfterLoad } from '../hooks/useAfterLoad';
 import { supabase } from '../lib/supabase';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
@@ -41,6 +43,9 @@ const Home: React.FC = () => {
   const { ref: revealRef, inView } = useInView(0.1);
   const [reviews, setReviews] = useState<Review[] | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(true);
+  // Slides 2 and 3 stay unmounted until load; see useAfterLoad for why
+  // loading="lazy" cannot do this job inside a fade carousel.
+  const heroDeferredReady = useAfterLoad();
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -61,8 +66,16 @@ const Home: React.FC = () => {
       .then(({ data, error }) => {
         if (!error && data && data.length > 0) setReviews(data as Review[]);
         else setReviews([]);
-        setReviewsLoading(false);
-      });
+      })
+      // A transport-level failure — offline, DNS, a Supabase outage — rejects
+      // instead of resolving with an `error`, which the handler above never
+      // saw. The loading flag then stayed true forever and the three skeleton
+      // placeholders kept running their pulse animation for the life of the
+      // page: a permanent shimmer where reviews should be, and main-thread
+      // work that never stops. Clearing the flag in `finally` retires the
+      // skeletons on both paths.
+      .catch(() => setReviews([]))
+      .finally(() => setReviewsLoading(false));
   }, []);
 
   const heroSlides = [
@@ -96,17 +109,15 @@ const Home: React.FC = () => {
         >
           {heroSlides.map((slide, index) => (
             <SwiperSlide key={index} className="!h-full">
-              <img
-                src={slide.image}
-                alt={slide.alt}
-                className="h-full w-full object-cover"
-                loading={slide.priority ? 'eager' : 'lazy'}
-                decoding={slide.priority ? 'sync' : 'async'}
-                // React 18 drops unknown camelCase props, so `fetchPriority`
-                // never reached the DOM. Spread the lowercase attribute the
-                // browser actually reads.
-                {...{ fetchpriority: slide.priority ? 'high' : 'low' }}
-              />
+              {(slide.priority || heroDeferredReady) && (
+                <ResponsiveImage
+                  src={slide.image}
+                  alt={slide.alt}
+                  sizes="100vw"
+                  className="h-full w-full object-cover"
+                  priority={slide.priority}
+                />
+              )}
             </SwiperSlide>
           ))}
         </Swiper>
@@ -400,12 +411,12 @@ const Home: React.FC = () => {
         className="relative overflow-hidden"
         style={{ padding: '5rem 1.5rem', minHeight: '320px' }}
       >
-        <img
+        <ResponsiveImage
           src="/Images/Pitons 1.jpg"
           alt="The iconic Pitons of St Lucia"
+          sizes="100vw"
           className="absolute inset-0 w-full h-full object-cover"
           style={{ zIndex: 0 }}
-          loading="lazy"
         />
         <div
           className="absolute inset-0"
