@@ -49,27 +49,28 @@ export default defineConfig(({ isSsrBuild }) => ({
               { userAgent: '*', allow: '/', disallow: ['/admin', '/admin/'] },
             ],
           }),
+          // The site runs without a service worker. index.html used to carry an
+          // inline script that unregistered every registration on load, while
+          // this plugin simultaneously injected a render-blocking
+          // registerSW.js that registered a new one — so each visit paid for
+          // registering a worker the next visit killed, and the PWA never
+          // actually worked. Lighthouse measured registerSW.js at ~300 ms of
+          // blocked rendering.
+          //
+          // `selfDestroying` resolves that in the plugin's own supported way:
+          // it emits a sw.js that unregisters itself and clears its caches.
+          // Browsers re-check sw.js on navigation, so anyone still carrying a
+          // registration from an earlier deploy gets cleanly torn down, while
+          // `injectRegister: false` means new visitors never register anything
+          // and no blocking script is added to the document.
+          //
+          // To turn the PWA back on, drop `selfDestroying`, restore
+          // `registerType`/`workbox` options, and let the plugin inject the
+          // registration again — but leave the site a release or two on this
+          // config first so existing workers are gone.
           VitePWA({
-            registerType: 'autoUpdate',
-            workbox: {
-              globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
-              runtimeCaching: [
-                {
-                  urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-                  handler: 'CacheFirst',
-                  options: {
-                    cacheName: 'google-fonts-cache',
-                    expiration: {
-                      maxEntries: 10,
-                      maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-                    },
-                    cacheableResponse: {
-                      statuses: [0, 200]
-                    }
-                  }
-                }
-              ]
-            }
+            selfDestroying: true,
+            injectRegister: false
           })
         ])
   ],

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import ResponsiveImage from '../components/ui/ResponsiveImage';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -32,10 +33,12 @@ export default function Login() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-8">
         <div className="flex flex-col items-center mb-8">
-          <img
+          <ResponsiveImage
             src="/Images/Logo.png"
             alt="FUNtastic Taxi & Tours"
+            sizes="64px"
             className="h-16 mb-4 object-contain"
+            loading="eager"
           />
           <h1 className="text-2xl font-heading font-bold text-navy">Sign In</h1>
           <p className="text-sm text-gray-500 mt-1">FUNtastic Taxi &amp; Tours</p>

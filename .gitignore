@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Lighthouse / performance audit output
+lighthouse-report*
+*.lighthouse.json

@@ -9,10 +9,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev       # Start development server
-npm run build     # Production build (tsc + vite build)
-npm run lint      # ESLint
-npm run preview   # Preview production build locally
+npm run dev          # Start development server
+npm run build        # Production build (vite build + SSR build + prerender + llms.txt)
+npm run lint         # ESLint
+npm run preview      # Preview production build locally
+npm run images       # Regenerate responsive image variants from image-sources/
+npm run perf:budget  # Check dist/ against the performance budget (run after build)
 ```
 
 No test suite is configured.
@@ -51,8 +53,19 @@ VITE_SUPABASE_ANON_KEY=
 - SweetAlert2 (`Swal`) is used for confirmation dialogs before destructive actions.
 - Custom Tailwind classes: `.btn`, `.btn-primary`, `.btn-cta`, `.btn-outline`, `.card`, `.section`, `.nav-link` — defined in `src/index.css`.
 - Brand colors: `turquoise: #00B8B8`, `yellow: #FFC845`. Fonts: Poppins (headings), Inter (body).
-- PWA service worker is at `src/service-worker.ts` with CacheFirst for static assets and NetworkFirst for HTML.
+- **No service worker runs.** `vite-plugin-pwa` is configured with `selfDestroying: true` and `injectRegister: false`: it emits a `sw.js` that unregisters any worker left over from an earlier deploy, and nothing registers a new one. See the comment in `vite.config.ts` before re-enabling the PWA.
 - The build splits chunks manually: `vendor` (React + Router) and `ui` (Lucide + Swiper).
+- Routes that are **prerendered** (`src/lib/routes.ts`) must stay eagerly imported in `App.tsx` — a `React.lazy` boundary makes React swap the prerendered markup for a Suspense fallback during hydration. Non-prerendered routes (`/booking`, `/thank-you`, `/login`, `/admin/*`) are lazy.
+
+## Images
+
+Full-resolution photographs live in `image-sources/` and are **not deployed**. `npm run images` (`scripts/optimize-images.mjs`) generates everything in `public/Images/` — an AVIF ladder plus a coarser JPEG/PNG fallback ladder — and writes the manifest `src/data/optimizedImages.ts`. Both the generated files and the manifest are committed.
+
+- Never hand-edit `public/Images/`; it is regenerated wholesale.
+- Render images with `<ResponsiveImage src="/Images/Marigot 1.jpg" sizes="..." />`. It keys off the original source path. **Always pass a `sizes` value that matches the real layout width** — the browser picks a rung from `sizes` before layout, so a wrong value downloads the wrong file. It defaults to `100vw`, which is right only for full-bleed images.
+- Set `priority` on the single LCP image per route, and no more than one.
+- Images inside a Swiper `effect="fade"` carousel are all in-viewport, so `loading="lazy"` does nothing for them. Gate the non-first slides on `useAfterLoad()` instead.
+- Two sources (`UVF Airport.jpg`, `Viewpoint 2.jpg`) are truncated mid-upload and only partly decode; `npm run images` warns about them. They need replacing at source.
 
 ## Internationalization
 

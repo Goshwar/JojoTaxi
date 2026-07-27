@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import ResponsiveImage from './ResponsiveImage';
 
 interface HomepageServiceCardProps {
   title: string;
@@ -17,10 +18,12 @@ const HomepageServiceCard: React.FC<HomepageServiceCardProps> = ({ title, descri
       to={link}
       className="group block relative overflow-hidden h-[240px] md:h-[280px] rounded-lg shadow-card hover:shadow-md transition-shadow"
     >
-      {/* Background image */}
-      <img
+      {/* Background image. One column of a 3-up grid inside the 1152px
+          container on desktop, full width minus gutters on phones. */}
+      <ResponsiveImage
         src={image}
         alt={imageAlt ?? title}
+        sizes="(min-width: 768px) 33vw, calc(100vw - 2rem)"
         className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.06]"
         style={{ transition: 'transform 400ms ease' }}
       />
