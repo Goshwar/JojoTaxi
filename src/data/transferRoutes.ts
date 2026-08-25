@@ -1,4 +1,4 @@
-import { ZONES, roundTripFare } from './zones';
+import { ZONES, findZone, roundTripFare, type Zone } from './zones';
 
 /**
  * Landing-page content for the highest-demand airport transfer corridors.
@@ -14,8 +14,10 @@ export interface TransferRoute {
   slug: string;
   /** Destination as travellers say it, used in the H1 and title. */
   destination: string;
-  /** Zone whose fare applies, keyed to ZONES[].zone. */
-  zone: string;
+  /** Zone whose fare applies, keyed to ZONES[].key. Deliberately the stable
+   *  slug rather than the display name: renaming "Zone 5" in the admin
+   *  dashboard must not break this page's fare. */
+  zoneKey: string;
   /** Which airport this corridor is priced from. */
   airport: 'UVF' | 'SLU';
   /**
@@ -34,7 +36,7 @@ export const TRANSFER_ROUTES: TransferRoute[] = [
   {
     slug: 'uvf-to-rodney-bay',
     destination: 'Rodney Bay',
-    zone: 'Zone 5',
+    zoneKey: 'zone-5',
     airport: 'UVF',
     // Sourced from the published FAQ answer.
     duration: '60–90 minutes',
@@ -51,7 +53,7 @@ export const TRANSFER_ROUTES: TransferRoute[] = [
   {
     slug: 'uvf-to-soufriere',
     destination: 'Soufrière',
-    zone: 'Zone 2',
+    zoneKey: 'zone-2',
     airport: 'UVF',
     intro:
       'Soufrière is the closest of the major resort areas to Hewanorra International Airport (UVF), sitting on the west coast beneath the Pitons. It is the shortest transfer to St. Lucia’s most photographed corner of the island, serving the resorts around the Pitons and Soufrière town itself.',
@@ -65,7 +67,7 @@ export const TRANSFER_ROUTES: TransferRoute[] = [
   {
     slug: 'uvf-to-marigot-bay',
     destination: 'Marigot Bay & Castries',
-    zone: 'Zone 4',
+    zoneKey: 'zone-4',
     airport: 'UVF',
     intro:
       'Marigot Bay and the capital, Castries, sit mid-island on the west coast, roughly halfway between Hewanorra International Airport (UVF) and the northern resorts. The route follows the coast road through the fishing villages of the west coast.',
@@ -78,15 +80,38 @@ export const TRANSFER_ROUTES: TransferRoute[] = [
   },
 ];
 
-/** One-way fare for a route, taken from the zone pricing table. */
-export const routeFare = (route: TransferRoute): number => {
-  const zone = ZONES.find((z) => z.zone === route.zone);
-  if (!zone) throw new Error(`Unknown zone "${route.zone}" for route ${route.slug}`);
+/**
+ * One-way fare for a route, taken from the zone pricing table.
+ *
+ * `zones` defaults to the build-time snapshot; the corridor pages pass the
+ * live zones so an admin price change shows up without a redeploy.
+ *
+ * A missing zone throws during the build — that is the point, since a corridor
+ * page with no fare must never reach production. At runtime the live data can
+ * legitimately lack a zone the snapshot had (someone deactivated it while a
+ * visitor had the page open), so callers pass a snapshot fallback rather than
+ * letting an exception blank the page.
+ */
+export const routeFare = (route: TransferRoute, zones: Zone[] = ZONES): number => {
+  const zone = findZone(route.zoneKey, zones);
+  if (!zone) throw new Error(`Unknown zone "${route.zoneKey}" for route ${route.slug}`);
   return route.airport === 'UVF' ? zone.uvf : zone.slu;
 };
 
-export const routeRoundTripFare = (route: TransferRoute): number =>
-  roundTripFare(routeFare(route));
+/** Fare that falls back to the snapshot instead of throwing. Browser-side use. */
+export const safeRouteFare = (route: TransferRoute, zones: Zone[] = ZONES): number => {
+  try {
+    return routeFare(route, zones);
+  } catch {
+    return routeFare(route, ZONES);
+  }
+};
+
+export const routeRoundTripFare = (
+  route: TransferRoute,
+  zones: Zone[] = ZONES,
+  discount?: number
+): number => roundTripFare(safeRouteFare(route, zones), discount);
 
 export const findTransferRoute = (slug?: string): TransferRoute | undefined =>
   TRANSFER_ROUTES.find((r) => r.slug === slug);

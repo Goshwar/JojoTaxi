@@ -4,7 +4,6 @@ import { AuthProvider } from './contexts/AuthContext';
 import { BookingProvider, useBooking } from './contexts/BookingContext';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/admin/ProtectedRoute';
-import PublicProtectedRoute from './components/ProtectedRoute';
 
 /*
  * Public pages that scripts/prerender.mjs turns into static HTML are imported
@@ -33,6 +32,7 @@ const ThankYou = lazy(() => import('./pages/ThankYou'));
 const PublicLogin = lazy(() => import('./pages/Login'));
 const AdminLayout = lazy(() => import('./components/admin/AdminLayout'));
 const Login = lazy(() => import('./pages/admin/Login'));
+const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const AdminBookings = lazy(() => import('./pages/admin/AdminBookings'));
 const AdminReviews = lazy(() => import('./pages/admin/AdminReviews'));
 const AdminMessages = lazy(() => import('./pages/admin/AdminMessages'));
@@ -147,12 +147,16 @@ function App() {
 
             {/* Admin routes */}
             <Route path="/admin/login" element={<Login />} />
+            {/* The sidebar has always labelled this "Dashboard", but it
+                rendered AdminReviews behind the *public* guard — so a
+                signed-out admin was bounced to /login rather than
+                /admin/login, and Dashboard.tsx was never reachable. */}
             <Route
               path="/admin"
               element={
-                <PublicProtectedRoute>
-                  <AdminLayout><AdminReviews /></AdminLayout>
-                </PublicProtectedRoute>
+                <ProtectedRoute>
+                  <AdminLayout><Dashboard /></AdminLayout>
+                </ProtectedRoute>
               }
             />
             <Route

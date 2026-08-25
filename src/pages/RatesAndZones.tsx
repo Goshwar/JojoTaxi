@@ -6,10 +6,14 @@ import { useBooking } from '../contexts/BookingContext';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
 import { breadcrumbSchema } from '../lib/schema';
-import { ZONES, roundTripFare, RATES_UPDATED } from '../data/zones';
-import { TRANSFER_ROUTES, routeFare } from '../data/transferRoutes';
+import { roundTripFare, discountLabel } from '../data/zones';
+import { TRANSFER_ROUTES, safeRouteFare } from '../data/transferRoutes';
+import { useLiveZones } from '../hooks/useLiveZones';
 
 const RatesAndZones: React.FC = () => {
+  // Starts as the prices baked into this page's prerendered HTML, then
+  // refreshes from Supabase so an admin edit is visible without a redeploy.
+  const { zones, roundTripDiscount, ratesUpdated } = useLiveZones();
   const { openModal } = useBooking();
   const navigate = useNavigate();
   const handleBookNow = () => {
@@ -46,13 +50,16 @@ const RatesAndZones: React.FC = () => {
           {/* Units and currency stated explicitly, and dated, so both readers
               and AI engines can quote these figures with confidence. */}
           <p className="text-center text-gray-600 mb-6">
-            All prices are in <strong>US dollars per vehicle</strong> (not per person).
-            Rates updated {RATES_UPDATED}.
+            All prices are in <strong>US dollars per vehicle</strong> (not per person).{' '}
+            {/* One interpolated string, not text + expression: React separates
+                those with an HTML comment, and a crude extractor reads
+                "Rates updated July 2026 ." with the comment as whitespace.
+                This line exists to be quoted, so it has to survive that. */}
+            {`Rates updated ${ratesUpdated}.`}
           </p>
 
           <div className="bg-white rounded-xl shadow-md overflow-hidden mb-12">
             <div className="overflow-x-auto">
-              {/* TODO: replace with live component in later iteration */}
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -60,13 +67,13 @@ const RatesAndZones: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Area/Resorts</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UVF Airport (One-way)</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SLU Airport (One-way)</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Round Trip (10% Discount)</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{`Round Trip (${discountLabel(roundTripDiscount)} Discount)`}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {ZONES.map((z) => (
-                    <tr key={z.zone}>
-                      <td className="px-6 py-4 whitespace-nowrap">{z.zone}</td>
+                  {zones.map((z) => (
+                    <tr key={z.key}>
+                      <td className="px-6 py-4 whitespace-nowrap">{z.name}</td>
                       <td className="px-6 py-4">{z.areas}</td>
                       {/* Interpolated as one string: writing `${z.uvf}` next to
                           a literal "$" makes React emit a <!-- --> separator
@@ -74,7 +81,7 @@ const RatesAndZones: React.FC = () => {
                           "$ 30" instead of "$30". */}
                       <td className="px-6 py-4">{`$${z.uvf}`}</td>
                       <td className="px-6 py-4">{`$${z.slu}`}</td>
-                      <td className="px-6 py-4">{`$${roundTripFare(z.uvf)}`}</td>
+                      <td className="px-6 py-4">{`$${roundTripFare(z.uvf, roundTripDiscount)}`}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -95,7 +102,7 @@ const RatesAndZones: React.FC = () => {
                 >
                   <p className="font-bold">{route.airport} to {route.destination}</p>
                   <p className="text-turquoise font-bold text-lg">
-                    {`$${routeFare(route)}`}{' '}
+                    {`$${safeRouteFare(route, zones)}`}{' '}
                     <span className="text-sm text-gray-500 font-normal">one-way per vehicle</span>
                   </p>
                 </Link>
