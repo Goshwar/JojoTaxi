@@ -1,11 +1,49 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import FaqItem from '../components/ui/FaqItem';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
 import { faqPageSchema, breadcrumbSchema } from '../lib/schema';
+import { discountLabel } from '../data/zones';
+import { useLiveZones, type LivePricing } from '../hooks/useLiveZones';
 
-const categories = [
+/**
+ * The "how much does a transfer cost" answer, derived from the zone table.
+ *
+ * This answer used to be hardcoded, and had already drifted: it quoted
+ * "$80–$110" for UVF to Rodney Bay against a zone price of $100, and offered
+ * "Cap Estate or Gros Islet start from $70" for areas that sit in the same
+ * $100 zone as Rodney Bay. It is also the single most-quoted answer on the
+ * site — it feeds the FAQPage schema that AI engines read — so a wrong number
+ * here is a wrong number in someone's travel plan. Deriving it means editing a
+ * zone price in the admin dashboard corrects this sentence too.
+ */
+const priceAnswer = ({ zones, roundTripDiscount, ratesUpdated }: LivePricing): string => {
+  if (!zones.length) {
+    return 'Transfer prices are fixed by destination zone and quoted per vehicle, not per person. See our Rates & Zones page for the current table.';
+  }
+
+  /** 'Rodney Bay, Gros Islet, Cap Estate' → '…, Gros Islet and Cap Estate'. */
+  const readable = (areas: string): string => {
+    const parts = areas.split(',').map((part) => part.trim()).filter(Boolean);
+    if (parts.length < 2) return areas;
+    return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  };
+
+  const cheapestUvf = Math.min(...zones.map((z) => z.uvf));
+  const cheapestSlu = Math.min(...zones.map((z) => z.slu));
+  const dearest = zones.reduce((a, b) => (b.uvf > a.uvf ? b : a));
+
+  return (
+    `Transfer prices are fixed by destination zone and quoted per vehicle, not per person. ` +
+    `From Hewanorra Airport (UVF) in the south, one-way fares run from $${cheapestUvf} for the ` +
+    `nearest areas up to $${dearest.uvf} for ${readable(dearest.areas)}. From George F. L. Charles Airport ` +
+    `(SLU) in Castries they start at $${cheapestSlu}. Round trips are ${discountLabel(roundTripDiscount)} ` +
+    `off two one-way fares. Rates last updated ${ratesUpdated} — visit our Rates & Zones page for the full table.`
+  );
+};
+
+const buildCategories = (pricing: LivePricing) => [
   {
     title: 'Airport Transfers',
     items: [
@@ -56,8 +94,7 @@ const categories = [
     items: [
       {
         question: 'How much does an airport transfer cost in St. Lucia?',
-        answer:
-          'Transfer prices vary by destination. A private transfer from Hewanorra Airport (UVF) to Rodney Bay ranges from $80–$110 USD per vehicle. Shorter routes to Cap Estate or Gros Islet start from $70 USD. All prices are per vehicle not per person. Visit our Rates & Zones page for full pricing.',
+        answer: priceAnswer(pricing),
       },
       {
         question: 'What payment methods do you accept?',
@@ -114,6 +151,11 @@ const categories = [
 ];
 
 const Faq: React.FC = () => {
+  // Same source as the rates table, so the FAQ answer and the price a visitor
+  // sees one click away cannot disagree.
+  const pricing = useLiveZones();
+  const categories = useMemo(() => buildCategories(pricing), [pricing]);
+
   return (
     <div>
       <Seo

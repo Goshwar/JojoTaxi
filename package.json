@@ -7,7 +7,8 @@
     "dev": "vite",
     "images": "node scripts/optimize-images.mjs",
     "perf:budget": "node scripts/check-perf-budget.mjs",
-    "build": "vite build && npm run build:ssr && node scripts/prerender.mjs && node scripts/generate-llms-txt.mjs",
+    "rates:sync": "node scripts/sync-rates.mjs",
+    "build": "npm run rates:sync && vite build && npm run build:ssr && node scripts/prerender.mjs && node scripts/generate-llms-txt.mjs",
     "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist-ssr",
     "lint": "eslint .",
     "preview": "vite preview"

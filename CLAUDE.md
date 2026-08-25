@@ -15,6 +15,7 @@ npm run lint         # ESLint
 npm run preview      # Preview production build locally
 npm run images       # Regenerate responsive image variants from image-sources/
 npm run perf:budget  # Check dist/ against the performance budget (run after build)
+npm run rates:sync   # Refresh src/data/zones.generated.ts from Supabase (runs first in build)
 ```
 
 No test suite is configured.
@@ -26,6 +27,8 @@ Required in `.env` (not committed):
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
+
+Optional: `VITE_NETLIFY_BUILD_HOOK` enables the "Publish" button on `/admin/rates`.
 
 ## Architecture
 
@@ -42,9 +45,22 @@ VITE_SUPABASE_ANON_KEY=
 
 **Auth** (`src/contexts/AuthContext.tsx`): Supabase email/password auth. Use `useAuth()` for `{ session, user, signIn, signOut }`.
 
-**Key database tables:** `bookings` (status: pending/confirmed/cancelled), `contact_messages` (read: boolean), `rates`, `fleet_vehicles`, `reviews`.
+**Key database tables:** `bookings` (status: pending/confirmed/cancelled), `contact_messages` (read: boolean), `zone_rates`, `pricing_settings`, `fleet_vehicles`, `reviews`. The older destination-keyed `rates` table is superseded by `zone_rates` and is no longer read by anything.
 
-**Static pricing data** lives in `src/data/rates.ts` — the `RatesAndZones` page currently uses this static file; a TODO exists to replace it with a live component.
+## Pricing
+
+Zone prices are edited at `/admin/rates` and stored in Supabase (`zone_rates` + the single-row `pricing_settings`). Everything that publishes a price reads `src/data/zones.ts` and nothing else — the rates table, the corridor pages, the FAQ price answer, the `Offer` schema and `llms.txt`.
+
+Prices reach the public site two ways, and both matter:
+
+1. **Build time.** `npm run rates:sync` (first step of `npm run build`) fetches the live table and rewrites `src/data/zones.generated.ts`, which `zones.ts` re-exports. This is what lands in the prerendered HTML and `llms.txt`, so crawlers and AI engines get real prices without running JavaScript. The generated file is **committed** — if Supabase is unreachable the sync warns and the build continues from the last known values rather than shipping a site with no prices.
+2. **Runtime.** `useLiveZones()` re-reads the table after hydration, so an admin price edit is visible to visitors without a redeploy. It must return the baked snapshot on first render or hydration breaks; the fetch lives in an effect for that reason.
+
+The gap between the two is the static files: `dist/*.html` as a crawler downloads it, and `llms.txt`. Only a rebuild updates those, which is what the "Publish" button on `/admin/rates` triggers. The dashboard compares `pricing_settings.last_published_at` against `updated_at` to show whether the published copy is behind.
+
+`transferRoutes.ts` links a corridor page to a zone by `zoneKey` (`'zone-5'`), never by display name, so renaming a zone in admin cannot break a fare. `routeFare()` throws on an unknown key — deliberately, to fail the build rather than publish a page with no price — so `safeRouteFare()` is the browser-side variant that falls back to the snapshot.
+
+Never hand-edit `src/data/zones.generated.ts`; edit prices in the admin dashboard.
 
 ## Conventions
 

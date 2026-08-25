@@ -1,208 +1,418 @@
-import React, { useEffect, useState } from 'react';
-import { Pencil, Check, X, Plus, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Swal from 'sweetalert2';
+import {
+  Pencil, Check, X, Plus, Trash2, Eye, EyeOff,
+  ArrowUp, ArrowDown, UploadCloud, Info,
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { roundTripFare, discountLabel, formatRatesUpdated } from '../../data/zones';
+import { TRANSFER_ROUTES } from '../../data/transferRoutes';
 
-interface Rate {
+/**
+ * Zone pricing — the numbers the public site publishes.
+ *
+ * Editing here changes what visitors see immediately: /rates-and-zones, the
+ * corridor landing pages and the FAQ price answer all re-read this table in
+ * the browser. What it does NOT change on its own is the prerendered HTML a
+ * search crawler downloads, or llms.txt, because those are files on disk.
+ * "Publish" rebuilds them. The banner in this page says so, because an owner
+ * who does not know that will assume Google saw the change.
+ */
+
+interface ZoneRate {
   id: string;
-  airport: 'UVF' | 'SLU';
-  destination: string;
-  one_way_usd: number;
-  round_trip_usd: number;
+  zone_key: string;
+  name: string;
+  areas: string;
+  uvf_usd: number;
+  slu_usd: number;
+  sort_order: number;
+  active: boolean;
   updated_at: string;
 }
 
-const emptyRate = { airport: 'UVF' as const, destination: '', one_way_usd: 0, round_trip_usd: 0 };
+interface PricingSettings {
+  round_trip_discount: number;
+  rates_updated: string;
+  last_published_at: string | null;
+  updated_at: string;
+}
+
+type Draft = {
+  zone_key: string;
+  name: string;
+  areas: string;
+  uvf_usd: number;
+  slu_usd: number;
+};
+
+const emptyDraft: Draft = { zone_key: '', name: '', areas: '', uvf_usd: 0, slu_usd: 0 };
+
+/** 'Zone 6' → 'zone-6'. Only ever suggested for new zones; keys never change. */
+const slugify = (value: string): string =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    // Strip combining accents so "Soufrière" keys as 'soufriere', not 'soufri-re'.
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+/** Corridor pages that would lose their fare if this zone disappeared. */
+const routesUsingZone = (zoneKey: string) =>
+  TRANSFER_ROUTES.filter((route) => route.zoneKey === zoneKey);
+
+const BUILD_HOOK = import.meta.env.VITE_NETLIFY_BUILD_HOOK as string | undefined;
+
+const inputClass =
+  'border border-gray-300 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-turquoise focus:outline-none';
 
 const AdminRates: React.FC = () => {
-  const [rates, setRates] = useState<Rate[]>([]);
+  const [zones, setZones] = useState<ZoneRate[]>([]);
+  const [settings, setSettings] = useState<PricingSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<Record<string, Partial<Rate>>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [adding, setAdding] = useState(false);
-  const [newRate, setNewRate] = useState({ ...emptyRate });
-  const [saving, setSaving] = useState<string | null>(null);
+  const [newZone, setNewZone] = useState<Draft>(emptyDraft);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('rates').select('*').order('airport').order('destination');
-    setRates(data ?? []);
+    const [zoneResult, settingsResult] = await Promise.all([
+      supabase.from('zone_rates').select('*').order('sort_order').order('name'),
+      supabase.from('pricing_settings').select('*').eq('id', 1).maybeSingle(),
+    ]);
+    setZones(zoneResult.data ?? []);
+    setSettings(settingsResult.data ?? null);
     setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const discount = settings?.round_trip_discount ?? 0.1;
+
+  /** The published site is behind whenever prices moved after the last build. */
+  const isStale = useMemo(() => {
+    if (!settings) return false;
+    if (!settings.last_published_at) return true;
+    return new Date(settings.last_published_at) < new Date(settings.updated_at);
+  }, [settings]);
+
+  const fail = (message: string) =>
+    Swal.fire({ icon: 'error', title: 'Could not save', text: message });
+
+  const startEdit = (zone: ZoneRate) => {
+    setEditingId(zone.id);
+    setDraft({
+      zone_key: zone.zone_key,
+      name: zone.name,
+      areas: zone.areas,
+      uvf_usd: zone.uvf_usd,
+      slu_usd: zone.slu_usd,
+    });
   };
 
-  useEffect(() => { load(); }, []);
-
-  const saveEdit = async (id: string) => {
-    const patch = editing[id];
-    if (!patch) return;
-    setSaving(id);
-    await supabase.from('rates').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id);
-    setSaving(null);
-    setEditing(prev => { const n = { ...prev }; delete n[id]; return n; });
+  const saveEdit = async () => {
+    if (!editingId) return;
+    if (!draft.name.trim()) return fail('A zone needs a name.');
+    setBusy(editingId);
+    // zone_key is intentionally not editable: transferRoutes.ts references it,
+    // and changing it here would silently break a corridor page's fare.
+    const { error } = await supabase
+      .from('zone_rates')
+      .update({
+        name: draft.name.trim(),
+        areas: draft.areas.trim(),
+        uvf_usd: draft.uvf_usd,
+        slu_usd: draft.slu_usd,
+      })
+      .eq('id', editingId);
+    setBusy(null);
+    if (error) return fail(error.message);
+    setEditingId(null);
     load();
   };
 
-  const cancelEdit = (id: string) => {
-    setEditing(prev => { const n = { ...prev }; delete n[id]; return n; });
-  };
+  const addZone = async () => {
+    const name = newZone.name.trim();
+    if (!name) return fail('A zone needs a name.');
+    const key = (newZone.zone_key.trim() || slugify(name));
+    if (!key) return fail('Could not derive a zone key from that name — set one manually.');
+    if (zones.some((z) => z.zone_key === key)) return fail(`A zone with the key "${key}" already exists.`);
 
-  const deleteRate = async (id: string) => {
-    if (!confirm('Delete this rate?')) return;
-    await supabase.from('rates').delete().eq('id', id);
-    load();
-  };
-
-  const addRate = async () => {
-    if (!newRate.destination) return;
-    setSaving('new');
-    await supabase.from('rates').insert([{ ...newRate, updated_at: new Date().toISOString() }]);
-    setSaving(null);
+    setBusy('new');
+    const { error } = await supabase.from('zone_rates').insert([{
+      zone_key: key,
+      name,
+      areas: newZone.areas.trim(),
+      uvf_usd: newZone.uvf_usd,
+      slu_usd: newZone.slu_usd,
+      sort_order: zones.length ? Math.max(...zones.map((z) => z.sort_order)) + 1 : 1,
+    }]);
+    setBusy(null);
+    if (error) return fail(error.message);
     setAdding(false);
-    setNewRate({ ...emptyRate });
+    setNewZone(emptyDraft);
     load();
   };
 
-  const uvf = rates.filter(r => r.airport === 'UVF');
-  const slu = rates.filter(r => r.airport === 'SLU');
+  const toggleActive = async (zone: ZoneRate) => {
+    const used = routesUsingZone(zone.zone_key);
+    if (zone.active && used.length) {
+      const confirmed = await Swal.fire({
+        icon: 'warning',
+        title: 'Hide this zone?',
+        html:
+          `<p>${used.length} transfer page${used.length === 1 ? '' : 's'} price from this zone ` +
+          `and will fall back to the last published fare:</p>` +
+          `<p style="margin-top:.5rem"><strong>${used.map((r) => r.destination).join(', ')}</strong></p>`,
+        showCancelButton: true,
+        confirmButtonText: 'Hide anyway',
+        confirmButtonColor: '#00B8B8',
+      });
+      if (!confirmed.isConfirmed) return;
+    }
+    const { error } = await supabase
+      .from('zone_rates')
+      .update({ active: !zone.active })
+      .eq('id', zone.id);
+    if (error) return fail(error.message);
+    load();
+  };
 
-  const RateTable = ({ group, label }: { group: Rate[]; label: string }) => (
-    <div className="mb-8">
-      <h2 className="text-lg font-bold text-gray-800 mb-3">{label}</h2>
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-gray-600 font-medium">Destination</th>
-              <th className="px-4 py-3 text-right text-gray-600 font-medium">One Way (USD)</th>
-              <th className="px-4 py-3 text-right text-gray-600 font-medium">Round Trip (USD)</th>
-              <th className="px-4 py-3 text-right text-gray-600 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {group.map((r) => {
-              const isEditing = !!editing[r.id];
-              const e = editing[r.id] ?? {};
-              return (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    {isEditing ? (
-                      <input
-                        className="border border-gray-300 rounded px-2 py-1 w-40 text-sm focus:ring-1 focus:ring-turquoise"
-                        value={e.destination ?? r.destination}
-                        onChange={ev => setEditing(p => ({ ...p, [r.id]: { ...p[r.id], destination: ev.target.value } }))}
-                      />
-                    ) : r.destination}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        className="border border-gray-300 rounded px-2 py-1 w-20 text-sm text-right focus:ring-1 focus:ring-turquoise"
-                        value={e.one_way_usd ?? r.one_way_usd}
-                        onChange={ev => setEditing(p => ({ ...p, [r.id]: { ...p[r.id], one_way_usd: Number(ev.target.value) } }))}
-                      />
-                    ) : `$${r.one_way_usd}`}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        className="border border-gray-300 rounded px-2 py-1 w-20 text-sm text-right focus:ring-1 focus:ring-turquoise"
-                        value={e.round_trip_usd ?? r.round_trip_usd}
-                        onChange={ev => setEditing(p => ({ ...p, [r.id]: { ...p[r.id], round_trip_usd: Number(ev.target.value) } }))}
-                      />
-                    ) : `$${r.round_trip_usd}`}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1.5">
-                      {isEditing ? (
-                        <>
-                          <button disabled={saving === r.id} onClick={() => saveEdit(r.id)} className="p-1.5 rounded bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50">
-                            <Check size={14} />
-                          </button>
-                          <button onClick={() => cancelEdit(r.id)} className="p-1.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200">
-                            <X size={14} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={() => setEditing(p => ({ ...p, [r.id]: {} }))} className="p-1.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200">
-                            <Pencil size={14} />
-                          </button>
-                          <button onClick={() => deleteRate(r.id)} className="p-1.5 rounded bg-red-100 text-red-600 hover:bg-red-200">
-                            <Trash2 size={14} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+  const move = async (zone: ZoneRate, direction: -1 | 1) => {
+    const ordered = [...zones].sort((a, b) => a.sort_order - b.sort_order);
+    const index = ordered.findIndex((z) => z.id === zone.id);
+    const swapWith = ordered[index + direction];
+    if (!swapWith) return;
+    setBusy(zone.id);
+    await Promise.all([
+      supabase.from('zone_rates').update({ sort_order: swapWith.sort_order }).eq('id', zone.id),
+      supabase.from('zone_rates').update({ sort_order: zone.sort_order }).eq('id', swapWith.id),
+    ]);
+    setBusy(null);
+    load();
+  };
+
+  const deleteZone = async (zone: ZoneRate) => {
+    const used = routesUsingZone(zone.zone_key);
+    if (used.length) {
+      // Refused rather than warned: routeFare() throws on an unknown zone key,
+      // which fails the next build rather than producing a priceless page.
+      // Better to say so here than to break a deploy.
+      return Swal.fire({
+        icon: 'error',
+        title: 'This zone is in use',
+        html:
+          `<p>These transfer pages take their fare from <strong>${zone.name}</strong>:</p>` +
+          `<p style="margin-top:.5rem"><strong>${used.map((r) => r.destination).join(', ')}</strong></p>` +
+          `<p style="margin-top:.75rem">Hide the zone instead, or have a developer repoint those ` +
+          `pages in <code>src/data/transferRoutes.ts</code> first.</p>`,
+      });
+    }
+
+    const confirmed = await Swal.fire({
+      icon: 'warning',
+      title: `Delete ${zone.name}?`,
+      text: 'This removes the zone from the public rates table. It cannot be undone.',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#dc2626',
+    });
+    if (!confirmed.isConfirmed) return;
+
+    const { error } = await supabase.from('zone_rates').delete().eq('id', zone.id);
+    if (error) return fail(error.message);
+    load();
+  };
+
+  const saveDiscount = async (percent: number) => {
+    if (Number.isNaN(percent) || percent < 0 || percent >= 100) {
+      return fail('The round-trip discount must be between 0 and 99%.');
+    }
+    const { error } = await supabase
+      .from('pricing_settings')
+      .update({ round_trip_discount: percent / 100 })
+      .eq('id', 1);
+    if (error) return fail(error.message);
+    load();
+  };
+
+  const publish = async () => {
+    if (!BUILD_HOOK) return;
+    const confirmed = await Swal.fire({
+      icon: 'question',
+      title: 'Publish to search engines & AI?',
+      text: 'Rebuilds the site so crawlers, Google and AI assistants see the current prices. Takes about two minutes.',
+      showCancelButton: true,
+      confirmButtonText: 'Publish',
+      confirmButtonColor: '#00B8B8',
+    });
+    if (!confirmed.isConfirmed) return;
+
+    setPublishing(true);
+    try {
+      // Netlify build hooks send no CORS headers, so the browser refuses to
+      // read the response. `no-cors` still delivers the POST — we simply
+      // cannot see the status code, which is why the message below says the
+      // build was requested rather than that it succeeded.
+      await fetch(BUILD_HOOK, { method: 'POST', mode: 'no-cors' });
+      await supabase
+        .from('pricing_settings')
+        .update({ last_published_at: new Date().toISOString() })
+        .eq('id', 1);
+      await load();
+      Swal.fire({
+        icon: 'success',
+        title: 'Build requested',
+        text: 'The site is rebuilding. Static pages and llms.txt will show the new prices in about two minutes.',
+        confirmButtonColor: '#00B8B8',
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Could not reach the build hook',
+        text: error instanceof Error ? error.message : 'Unknown error.',
+      });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const ordered = useMemo(
+    () => [...zones].sort((a, b) => a.sort_order - b.sort_order),
+    [zones]
   );
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Rates</h1>
-        <button
-          onClick={() => setAdding(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-turquoise text-white text-sm rounded-lg hover:bg-turquoise/90 transition-colors"
-        >
-          <Plus size={16} /> Add Rate
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Rates &amp; Zones</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {settings
+              ? `Prices last changed ${formatRatesUpdated(settings.rates_updated)}`
+              : 'Zone pricing published across the site'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {BUILD_HOOK && (
+            <button
+              onClick={publish}
+              disabled={publishing}
+              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 ${
+                isStale
+                  ? 'bg-yellow text-gray-900 hover:bg-yellow/90'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <UploadCloud size={16} />
+              {publishing ? 'Publishing…' : 'Publish'}
+            </button>
+          )}
+          <button
+            onClick={() => setAdding(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-turquoise text-white text-sm rounded-lg hover:bg-turquoise/90 transition-colors"
+          >
+            <Plus size={16} /> Add Zone
+          </button>
+        </div>
+      </div>
+
+      {/* What actually happens when you save. Without this an owner reasonably
+          assumes a price edit reaches Google straight away. */}
+      <div className="flex gap-3 bg-turquoise/5 border border-turquoise/30 rounded-xl p-4 mb-6 text-sm">
+        <Info size={18} className="text-turquoise flex-shrink-0 mt-0.5" />
+        <div className="text-gray-700">
+          <p>
+            Saving updates the rates table, the transfer pages and the FAQ answer for
+            visitors <strong>straight away</strong>.
+          </p>
+          <p className="mt-1">
+            Google and AI assistants read the published copy of the site, which only
+            changes when it is rebuilt.{' '}
+            {BUILD_HOOK ? (
+              isStale ? (
+                <strong className="text-yellow-700">
+                  The published copy is currently behind — press Publish.
+                </strong>
+              ) : (
+                <span className="text-green-700">The published copy is up to date.</span>
+              )
+            ) : (
+              <span className="text-gray-500">
+                Set <code>VITE_NETLIFY_BUILD_HOOK</code> to enable the Publish button;
+                until then a rebuild happens on the next deploy.
+              </span>
+            )}
+          </p>
+          {settings?.last_published_at && (
+            <p className="mt-1 text-gray-500">
+              Last published {new Date(settings.last_published_at).toLocaleString()}
+            </p>
+          )}
+        </div>
       </div>
 
       {adding && (
         <div className="bg-white rounded-xl border border-turquoise/40 p-5 mb-6">
-          <h2 className="font-semibold text-gray-800 mb-4">New Rate</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <h2 className="font-semibold text-gray-800 mb-4">New Zone</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Airport</label>
-              <select
-                className="border border-gray-300 rounded px-2 py-2 text-sm w-full focus:ring-1 focus:ring-turquoise"
-                value={newRate.airport}
-                onChange={e => setNewRate(p => ({ ...p, airport: e.target.value as 'UVF' | 'SLU' }))}
-              >
-                <option value="UVF">UVF</option>
-                <option value="SLU">SLU</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Destination</label>
+              <label className="text-xs text-gray-500 mb-1 block">Zone name</label>
               <input
-                className="border border-gray-300 rounded px-2 py-2 text-sm w-full focus:ring-1 focus:ring-turquoise"
-                value={newRate.destination}
-                onChange={e => setNewRate(p => ({ ...p, destination: e.target.value }))}
-                placeholder="e.g., Rodney Bay"
+                className={`${inputClass} w-full`}
+                value={newZone.name}
+                onChange={(e) => setNewZone((p) => ({ ...p, name: e.target.value }))}
+                placeholder="e.g., Zone 6"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">One Way (USD)</label>
+              <label className="text-xs text-gray-500 mb-1 block">Areas covered</label>
               <input
-                type="number"
-                className="border border-gray-300 rounded px-2 py-2 text-sm w-full focus:ring-1 focus:ring-turquoise"
-                value={newRate.one_way_usd}
-                onChange={e => setNewRate(p => ({ ...p, one_way_usd: Number(e.target.value) }))}
+                className={`${inputClass} w-full`}
+                value={newZone.areas}
+                onChange={(e) => setNewZone((p) => ({ ...p, areas: e.target.value }))}
+                placeholder="e.g., Dennery, Micoud"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Round Trip (USD)</label>
+              <label className="text-xs text-gray-500 mb-1 block">From UVF (USD)</label>
               <input
                 type="number"
-                className="border border-gray-300 rounded px-2 py-2 text-sm w-full focus:ring-1 focus:ring-turquoise"
-                value={newRate.round_trip_usd}
-                onChange={e => setNewRate(p => ({ ...p, round_trip_usd: Number(e.target.value) }))}
+                className={`${inputClass} w-full text-right`}
+                value={newZone.uvf_usd}
+                onChange={(e) => setNewZone((p) => ({ ...p, uvf_usd: Number(e.target.value) }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">From SLU (USD)</label>
+              <input
+                type="number"
+                className={`${inputClass} w-full text-right`}
+                value={newZone.slu_usd}
+                onChange={(e) => setNewZone((p) => ({ ...p, slu_usd: Number(e.target.value) }))}
               />
             </div>
           </div>
+          <p className="text-xs text-gray-400 mt-2">
+            Reference key: <code>{newZone.zone_key.trim() || slugify(newZone.name) || '—'}</code>{' '}
+            — used by developers to link a transfer page to this zone. It cannot be changed later.
+          </p>
           <div className="flex gap-2 mt-4">
-            <button disabled={saving === 'new'} onClick={addRate} className="px-4 py-2 bg-turquoise text-white text-sm rounded-lg hover:bg-turquoise/90 disabled:opacity-50 transition-colors">
+            <button
+              disabled={busy === 'new'}
+              onClick={addZone}
+              className="px-4 py-2 bg-turquoise text-white text-sm rounded-lg hover:bg-turquoise/90 disabled:opacity-50 transition-colors"
+            >
               Save
             </button>
-            <button onClick={() => { setAdding(false); setNewRate({ ...emptyRate }); }} className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors">
+            <button
+              onClick={() => { setAdding(false); setNewZone(emptyDraft); }}
+              className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
+            >
               Cancel
             </button>
           </div>
@@ -215,8 +425,185 @@ const AdminRates: React.FC = () => {
         </div>
       ) : (
         <>
-          <RateTable group={uvf} label="UVF – Hewanorra International Airport" />
-          <RateTable group={slu} label="SLU – George F. L. Charles Airport" />
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-gray-600 font-medium">Zone</th>
+                    <th className="px-4 py-3 text-left text-gray-600 font-medium">Areas covered</th>
+                    <th className="px-4 py-3 text-right text-gray-600 font-medium">From UVF</th>
+                    <th className="px-4 py-3 text-right text-gray-600 font-medium">From SLU</th>
+                    <th className="px-4 py-3 text-right text-gray-600 font-medium">
+                      Round trip ({discountLabel(discount)} off)
+                    </th>
+                    <th className="px-4 py-3 text-right text-gray-600 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {ordered.map((zone, index) => {
+                    const isEditing = editingId === zone.id;
+                    const uvf = isEditing ? draft.uvf_usd : zone.uvf_usd;
+                    return (
+                      <tr
+                        key={zone.id}
+                        className={`hover:bg-gray-50 ${zone.active ? '' : 'opacity-50'}`}
+                      >
+                        <td className="px-4 py-3">
+                          {isEditing ? (
+                            <input
+                              className={`${inputClass} w-28`}
+                              value={draft.name}
+                              onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))}
+                            />
+                          ) : (
+                            <div>
+                              <span className="font-medium text-gray-800">{zone.name}</span>
+                              {!zone.active && (
+                                <span className="ml-2 text-xs text-gray-400">hidden</span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {isEditing ? (
+                            <input
+                              className={`${inputClass} w-full min-w-[14rem]`}
+                              value={draft.areas}
+                              onChange={(e) => setDraft((p) => ({ ...p, areas: e.target.value }))}
+                            />
+                          ) : (
+                            <span className="text-gray-600">{zone.areas}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              className={`${inputClass} w-20 text-right`}
+                              value={draft.uvf_usd}
+                              onChange={(e) => setDraft((p) => ({ ...p, uvf_usd: Number(e.target.value) }))}
+                            />
+                          ) : `$${zone.uvf_usd}`}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              className={`${inputClass} w-20 text-right`}
+                              value={draft.slu_usd}
+                              onChange={(e) => setDraft((p) => ({ ...p, slu_usd: Number(e.target.value) }))}
+                            />
+                          ) : `$${zone.slu_usd}`}
+                        </td>
+                        {/* Derived, never stored: a round-trip column someone can
+                            edit is a round-trip column that disagrees with the
+                            one-way price it is supposed to be based on. */}
+                        <td className="px-4 py-3 text-right text-gray-500">
+                          ${roundTripFare(uvf, discount)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-1.5">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  disabled={busy === zone.id}
+                                  onClick={saveEdit}
+                                  title="Save"
+                                  className="p-1.5 rounded bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50"
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setEditingId(null)}
+                                  title="Cancel"
+                                  className="p-1.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  disabled={index === 0 || busy === zone.id}
+                                  onClick={() => move(zone, -1)}
+                                  title="Move up"
+                                  className="p-1.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30"
+                                >
+                                  <ArrowUp size={14} />
+                                </button>
+                                <button
+                                  disabled={index === ordered.length - 1 || busy === zone.id}
+                                  onClick={() => move(zone, 1)}
+                                  title="Move down"
+                                  className="p-1.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30"
+                                >
+                                  <ArrowDown size={14} />
+                                </button>
+                                <button
+                                  onClick={() => toggleActive(zone)}
+                                  title={zone.active ? 'Hide from the public site' : 'Show on the public site'}
+                                  className="p-1.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                >
+                                  {zone.active ? <Eye size={14} /> : <EyeOff size={14} />}
+                                </button>
+                                <button
+                                  onClick={() => startEdit(zone)}
+                                  title="Edit"
+                                  className="p-1.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                                <button
+                                  onClick={() => deleteZone(zone)}
+                                  title="Delete"
+                                  className="p-1.5 rounded bg-red-100 text-red-600 hover:bg-red-200"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {ordered.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                        No zones yet. The public site will keep showing the last published
+                        prices until you add one.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* The discount is published as a number in llms.txt and as copy on
+              two public pages, so it belongs in the database, not in JSX. */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 max-w-md">
+            <h2 className="font-semibold text-gray-800 mb-1">Round-trip discount</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              A round trip is charged as two one-way UVF fares, less this percentage.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={99}
+                defaultValue={Math.round(discount * 100)}
+                key={discount}
+                className={`${inputClass} w-24 text-right`}
+                onBlur={(e) => {
+                  const next = Number(e.target.value);
+                  if (next !== Math.round(discount * 100)) saveDiscount(next);
+                }}
+              />
+              <span className="text-sm text-gray-500">% off</span>
+            </div>
+          </div>
         </>
       )}
     </div>

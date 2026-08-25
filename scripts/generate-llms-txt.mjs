@@ -14,6 +14,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const {
   ZONES,
   roundTripFare,
+  discountLabel,
   RATES_UPDATED,
   SITE_URL,
   TRANSFER_ROUTES,
@@ -37,7 +38,7 @@ const tourLines = TOURS.map(
 
 const rateLines = ZONES.map(
   (z) =>
-    `| ${z.zone} | ${z.areas} | $${z.uvf} | $${z.slu} | $${roundTripFare(z.uvf)} |`
+    `| ${z.name} | ${z.areas} | $${z.uvf} | $${z.slu} | $${roundTripFare(z.uvf)} |`
 ).join('\n');
 
 const content = `# FUNtastic Taxi & Tours
@@ -73,7 +74,7 @@ Reviews: ${BUSINESS_PROFILES.tripadvisor}
 ## Rates
 
 All prices are in US dollars **per vehicle**, not per person. One-way unless
-stated. Round trip is two one-way UVF fares less 10%. Rates updated ${RATES_UPDATED}.
+stated. Round trip is two one-way UVF fares less ${discountLabel()}. Rates updated ${RATES_UPDATED}.
 
 | Zone | Areas and resorts | From UVF (one-way) | From SLU (one-way) | Round trip |
 |------|-------------------|--------------------|--------------------|------------|

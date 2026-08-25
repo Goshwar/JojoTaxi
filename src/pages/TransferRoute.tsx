@@ -5,13 +5,14 @@ import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
 import { transferRouteSchema, breadcrumbSchema } from '../lib/schema';
 import { useBooking } from '../contexts/BookingContext';
-import { RATES_UPDATED } from '../data/zones';
+import { discountLabel } from '../data/zones';
 import {
   findTransferRoute,
-  routeFare,
+  safeRouteFare,
   routeRoundTripFare,
   AIRPORT_NAMES,
 } from '../data/transferRoutes';
+import { useLiveZones } from '../hooks/useLiveZones';
 
 /**
  * Landing page for one airport-transfer corridor, e.g. UVF to Rodney Bay.
@@ -23,12 +24,15 @@ const TransferRoute: React.FC = () => {
   const route = findTransferRoute(slug);
   const { openModal } = useBooking();
   const navigate = useNavigate();
+  // Hooks must run before the early return below, so this is called
+  // unconditionally even on an unknown slug.
+  const { zones, roundTripDiscount, ratesUpdated } = useLiveZones();
 
   if (!route) return <Navigate to="/rates-and-zones" replace />;
 
   const airportName = AIRPORT_NAMES[route.airport];
-  const fare = routeFare(route);
-  const roundTrip = routeRoundTripFare(route);
+  const fare = safeRouteFare(route, zones);
+  const roundTrip = routeRoundTripFare(route, zones, roundTripDiscount);
   const title = `${airportName} to ${route.destination} Transfer | FUNtastic Taxi & Tours`;
 
   const handleBookNow = () => {
@@ -83,7 +87,7 @@ const TransferRoute: React.FC = () => {
             <div className="card text-center py-6">
               <p className="text-sm text-gray-500 uppercase tracking-wide">Round trip</p>
               <p className="text-3xl font-bold text-turquoise">{`$${roundTrip}`}</p>
-              <p className="text-sm text-gray-500">USD per vehicle (10% off)</p>
+              <p className="text-sm text-gray-500">{`USD per vehicle (${discountLabel(roundTripDiscount)} off)`}</p>
             </div>
             <div className="card text-center py-6">
               <p className="text-sm text-gray-500 uppercase tracking-wide">Journey</p>
@@ -111,8 +115,10 @@ const TransferRoute: React.FC = () => {
           </ul>
 
           <p className="text-gray-600 mb-8">
-            Fares include the driver, vehicle, fuel, taxes and bottled water. Prices are in
-            US dollars per vehicle, not per person, and were last updated {RATES_UPDATED}.
+            {/* Interpolated as one string so the date is not split from its
+                sentence by React's <!-- --> separator. */}
+            {'Fares include the driver, vehicle, fuel, taxes and bottled water. Prices are in ' +
+              `US dollars per vehicle, not per person, and were last updated ${ratesUpdated}.`}{' '}
             See the <Link to="/rates-and-zones" className="text-turquoise underline">full zone pricing table</Link>{' '}
             for every destination, or read the <Link to="/faq" className="text-turquoise underline">FAQ</Link>{' '}
             for answers on flight delays, cancellations and payment.
