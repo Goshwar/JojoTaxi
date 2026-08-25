@@ -45,7 +45,9 @@ Optional: `VITE_NETLIFY_BUILD_HOOK` enables the "Publish" button on `/admin/rate
 
 **Auth** (`src/contexts/AuthContext.tsx`): Supabase email/password auth. Use `useAuth()` for `{ session, user, signIn, signOut }`.
 
-**Key database tables:** `bookings` (status: pending/confirmed/cancelled), `contact_messages` (read: boolean), `zone_rates`, `pricing_settings`, `fleet_vehicles`, `reviews`. The older destination-keyed `rates` table is superseded by `zone_rates` and is no longer read by anything.
+**Live database tables** (Supabase project `Tours`): `bookings`, `reviews`, `zone_rates`, `pricing_settings`. That is all of them.
+
+⚠️ **`supabase/migrations/` does not describe the live database.** The older migrations define a `bookings` table with different column names than production actually uses (`full_name`/`booking_type`/`pickup_location` live, vs `name`/`pickup` in the migration), plus `contact_messages`, `rates` and `fleet_vehicles` tables that **do not exist**. Consequently `/admin/messages` and `/admin/fleet` query missing tables and silently render empty, and the Dashboard's unread-message count is always 0. Only `20260825120000_add_zone_rates_pricing_settings.sql` has been applied to the live project. Check the real schema before trusting a migration file.
 
 ## Pricing
 
