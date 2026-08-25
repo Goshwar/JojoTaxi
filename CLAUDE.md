@@ -28,7 +28,7 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
 
-Optional: `VITE_NETLIFY_BUILD_HOOK` enables the "Publish" button on `/admin/rates`.
+Note that every `VITE_` variable is inlined into the client bundle, so nothing secret belongs in one. The Netlify build hook behind the admin "Publish" button is held as the `NETLIFY_BUILD_HOOK` secret on the `publish-site` Edge Function instead.
 
 ## Architecture
 
@@ -59,6 +59,8 @@ Prices reach the public site two ways, and both matter:
 2. **Runtime.** `useLiveZones()` re-reads the table after hydration, so an admin price edit is visible to visitors without a redeploy. It must return the baked snapshot on first render or hydration breaks; the fetch lives in an effect for that reason.
 
 The gap between the two is the static files: `dist/*.html` as a crawler downloads it, and `llms.txt`. Only a rebuild updates those, which is what the "Publish" button on `/admin/rates` triggers. The dashboard compares `pricing_settings.last_published_at` against `updated_at` to show whether the published copy is behind.
+
+Publish goes through the `publish-site` Edge Function (`supabase/functions/publish-site/`), which holds the Netlify build hook as a server-side secret and verifies the caller is a signed-in admin before firing it. It checks `auth.getUser()` explicitly rather than relying on the gateway's JWT verification alone — the project's anon key is itself a valid JWT, so gateway verification would let an unauthenticated request through.
 
 `transferRoutes.ts` links a corridor page to a zone by `zoneKey` (`'zone-5'`), never by display name, so renaming a zone in admin cannot break a fare. `routeFare()` throws on an unknown key — deliberately, to fail the build rather than publish a page with no price — so `safeRouteFare()` is the browser-side variant that falls back to the snapshot.
 

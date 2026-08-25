@@ -62,8 +62,6 @@ const slugify = (value: string): string =>
 const routesUsingZone = (zoneKey: string) =>
   TRANSFER_ROUTES.filter((route) => route.zoneKey === zoneKey);
 
-const BUILD_HOOK = import.meta.env.VITE_NETLIFY_BUILD_HOOK as string | undefined;
-
 const inputClass =
   'border border-gray-300 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-turquoise focus:outline-none';
 
@@ -241,7 +239,6 @@ const AdminRates: React.FC = () => {
   };
 
   const publish = async () => {
-    if (!BUILD_HOOK) return;
     const confirmed = await Swal.fire({
       icon: 'question',
       title: 'Publish to search engines & AI?',
@@ -253,32 +250,40 @@ const AdminRates: React.FC = () => {
     if (!confirmed.isConfirmed) return;
 
     setPublishing(true);
-    try {
-      // Netlify build hooks send no CORS headers, so the browser refuses to
-      // read the response. `no-cors` still delivers the POST — we simply
-      // cannot see the status code, which is why the message below says the
-      // build was requested rather than that it succeeded.
-      await fetch(BUILD_HOOK, { method: 'POST', mode: 'no-cors' });
-      await supabase
-        .from('pricing_settings')
-        .update({ last_published_at: new Date().toISOString() })
-        .eq('id', 1);
-      await load();
-      Swal.fire({
-        icon: 'success',
-        title: 'Build requested',
-        text: 'The site is rebuilding. Static pages and llms.txt will show the new prices in about two minutes.',
-        confirmButtonColor: '#00B8B8',
-      });
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Could not reach the build hook',
-        text: error instanceof Error ? error.message : 'Unknown error.',
-      });
-    } finally {
-      setPublishing(false);
+    // The build hook is held as a secret by the `publish-site` Edge Function,
+    // which checks the caller is a signed-in admin before using it. It is
+    // deliberately not a VITE_ variable: those are inlined into the client
+    // bundle, and the hook URL is enough on its own to burn the site's build
+    // minutes. invoke() also gives a readable response, so this can report
+    // what actually happened rather than guessing.
+    const { data, error } = await supabase.functions.invoke('publish-site', { method: 'POST' });
+    setPublishing(false);
+
+    if (error) {
+      // The function answers with { error } JSON; FunctionsHttpError carries
+      // the original Response so that message can be shown instead of a bare
+      // "non-2xx status code".
+      let message = error.message;
+      const response = (error as { context?: Response }).context;
+      if (response && typeof response.json === 'function') {
+        try {
+          const body = await response.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // Keep the generic message if the body is not JSON.
+        }
+      }
+      return Swal.fire({ icon: 'error', title: 'Could not publish', text: message });
     }
+
+    await load();
+    Swal.fire({
+      icon: 'success',
+      title: 'Build started',
+      text: data?.warning ??
+        'Netlify is rebuilding the site. Static pages and llms.txt will show the new prices in about two minutes.',
+      confirmButtonColor: '#00B8B8',
+    });
   };
 
   const ordered = useMemo(
@@ -298,20 +303,18 @@ const AdminRates: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {BUILD_HOOK && (
-            <button
-              onClick={publish}
-              disabled={publishing}
-              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 ${
-                isStale
-                  ? 'bg-yellow text-gray-900 hover:bg-yellow/90'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <UploadCloud size={16} />
-              {publishing ? 'Publishing…' : 'Publish'}
-            </button>
-          )}
+          <button
+            onClick={publish}
+            disabled={publishing}
+            className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 ${
+              isStale
+                ? 'bg-yellow text-gray-900 hover:bg-yellow/90'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <UploadCloud size={16} />
+            {publishing ? 'Publishing…' : 'Publish'}
+          </button>
           <button
             onClick={() => setAdding(true)}
             className="flex items-center gap-2 px-4 py-2 bg-turquoise text-white text-sm rounded-lg hover:bg-turquoise/90 transition-colors"
@@ -333,19 +336,12 @@ const AdminRates: React.FC = () => {
           <p className="mt-1">
             Google and AI assistants read the published copy of the site, which only
             changes when it is rebuilt.{' '}
-            {BUILD_HOOK ? (
-              isStale ? (
-                <strong className="text-yellow-700">
-                  The published copy is currently behind — press Publish.
-                </strong>
-              ) : (
-                <span className="text-green-700">The published copy is up to date.</span>
-              )
+            {isStale ? (
+              <strong className="text-yellow-700">
+                The published copy is currently behind — press Publish.
+              </strong>
             ) : (
-              <span className="text-gray-500">
-                Set <code>VITE_NETLIFY_BUILD_HOOK</code> to enable the Publish button;
-                until then a rebuild happens on the next deploy.
-              </span>
+              <span className="text-green-700">The published copy is up to date.</span>
             )}
           </p>
           {settings?.last_published_at && (
