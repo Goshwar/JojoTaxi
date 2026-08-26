@@ -3,9 +3,13 @@
  *
  * Content is drawn from the answers already published on the FAQ page, so
  * nothing here asserts a fact the site was not already making. Tour pricing is
- * deliberately absent: unlike transfers, there is no published tour price list
- * to source from, and inventing one would put a wrong number in front of both
- * customers and AI engines. Add a `price` field once the operator confirms.
+ * deliberately absent: unlike transfers, there is no published price for these
+ * specific named tours, and inventing one would put a wrong number in front of
+ * both customers and AI engines. Add a `price` field once the operator confirms.
+ *
+ * Note this is not the same thing as the generic half-day / full-day / hourly
+ * charter rates, which ARE published — those live in the `service_rates` table
+ * and are edited at /admin/rates. Mapping one to the other would be a guess.
  */
 
 export interface Tour {

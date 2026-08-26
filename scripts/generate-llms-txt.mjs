@@ -13,6 +13,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const {
   ZONES,
+  SERVICE_RATES,
   roundTripFare,
   discountLabel,
   RATES_UPDATED,
@@ -34,6 +35,16 @@ const tourLines = TOURS.map(
   (t) =>
     `- **${t.name}**${t.duration ? ` (${t.duration})` : ''} — ${t.stops.slice(0, 3).join('; ')}. ` +
     `${SITE_URL}/tours/${t.slug}`
+).join('\n');
+
+// Tour and charter prices were absent from this file for a good reason: there
+// was no published price list to source them from, and inventing one would have
+// put a figure nobody confirmed in front of AI engines. They are admin-editable
+// data now, so they can be quoted with the same confidence as the zone fares.
+const serviceLines = SERVICE_RATES.map(
+  (s) =>
+    `- **${s.name}** — $${s.price} USD ${s.unit === 'hourly' ? 'per hour' : 'per vehicle'}` +
+    `${s.summary ? ` (${s.summary})` : ''}. ${s.includes.slice(0, 3).join('; ')}.`
 ).join('\n');
 
 const rateLines = ZONES.map(
@@ -83,6 +94,10 @@ ${rateLines}
 Rates include driver, vehicle, fuel, taxes and bottled water. Gratuity is not
 included. Full pricing: ${SITE_URL}/rates-and-zones
 
+### Island tours and hourly charter
+
+${serviceLines}
+
 ### Popular airport transfer routes
 
 ${routeLines}
@@ -123,4 +138,4 @@ ${TOURS.map((t) => `- [${t.name}](${SITE_URL}/tours/${t.slug}) — itinerary and
 `;
 
 await writeFile(join(root, 'dist', 'llms.txt'), content, 'utf8');
-console.log(`  generated dist/llms.txt (${ZONES.length} zones, rates dated ${RATES_UPDATED})`);
+console.log(`  generated dist/llms.txt (${ZONES.length} zones, ${SERVICE_RATES.length} services, rates dated ${RATES_UPDATED})`);

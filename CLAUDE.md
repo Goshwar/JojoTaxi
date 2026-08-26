@@ -15,7 +15,7 @@ npm run lint         # ESLint
 npm run preview      # Preview production build locally
 npm run images       # Regenerate responsive image variants from image-sources/
 npm run perf:budget  # Check dist/ against the performance budget (run after build)
-npm run rates:sync   # Refresh src/data/zones.generated.ts from Supabase (runs first in build)
+npm run rates:sync   # Refresh src/data/pricing.generated.ts from Supabase (runs first in build)
 ```
 
 No test suite is configured.
@@ -45,17 +45,23 @@ Note that every `VITE_` variable is inlined into the client bundle, so nothing s
 
 **Auth** (`src/contexts/AuthContext.tsx`): Supabase email/password auth. Use `useAuth()` for `{ session, user, signIn, signOut }`.
 
-**Live database tables** (Supabase project `Tours`): `bookings`, `reviews`, `zone_rates`, `pricing_settings`. That is all of them.
+**Live database tables** (Supabase project `Tours`): `bookings`, `reviews`, `zone_rates`, `service_rates`, `pricing_settings`. That is all of them.
 
 ⚠️ **`supabase/migrations/` does not describe the live database.** The older migrations define a `bookings` table with different column names than production actually uses (`full_name`/`booking_type`/`pickup_location` live, vs `name`/`pickup` in the migration), plus `contact_messages`, `rates` and `fleet_vehicles` tables that **do not exist**. Consequently `/admin/messages` and `/admin/fleet` query missing tables and silently render empty, and the Dashboard's unread-message count is always 0. Only `20260825120000_add_zone_rates_pricing_settings.sql` has been applied to the live project. Check the real schema before trusting a migration file.
 
 ## Pricing
 
-Zone prices are edited at `/admin/rates` and stored in Supabase (`zone_rates` + the single-row `pricing_settings`). Everything that publishes a price reads `src/data/zones.ts` and nothing else — the rates table, the corridor pages, the FAQ price answer, the `Offer` schema and `llms.txt`.
+All prices are edited at `/admin/rates` and stored in Supabase:
+
+- `zone_rates` — airport transfer fares by zone
+- `service_rates` — island tours and hourly charter (price, unit, summary line and feature bullets)
+- `pricing_settings` — single row: round-trip discount, rates-updated date, last-published time
+
+Everything that publishes a price reads `src/data/zones.ts` and nothing else — the rates table, the tour and charter cards, the corridor pages, the FAQ price answer, the `Offer` schema and `llms.txt`.
 
 Prices reach the public site two ways, and both matter:
 
-1. **Build time.** `npm run rates:sync` (first step of `npm run build`) fetches the live table and rewrites `src/data/zones.generated.ts`, which `zones.ts` re-exports. This is what lands in the prerendered HTML and `llms.txt`, so crawlers and AI engines get real prices without running JavaScript. The generated file is **committed** — if Supabase is unreachable the sync warns and the build continues from the last known values rather than shipping a site with no prices.
+1. **Build time.** `npm run rates:sync` (first step of `npm run build`) fetches the live tables and rewrites `src/data/pricing.generated.ts`, which `zones.ts` re-exports. This is what lands in the prerendered HTML and `llms.txt`, so crawlers and AI engines get real prices without running JavaScript. The generated file is **committed** — if Supabase is unreachable the sync warns and the build continues from the last known values rather than shipping a site with no prices.
 2. **Runtime.** `useLiveZones()` re-reads the table after hydration, so an admin price edit is visible to visitors without a redeploy. It must return the baked snapshot on first render or hydration breaks; the fetch lives in an effect for that reason.
 
 The gap between the two is the static files: `dist/*.html` as a crawler downloads it, and `llms.txt`. Only a rebuild updates those, which is what the "Publish" button on `/admin/rates` triggers. The dashboard compares `pricing_settings.last_published_at` against `updated_at` to show whether the published copy is behind.
@@ -64,7 +70,9 @@ Publish goes through the `publish-site` Edge Function (`supabase/functions/publi
 
 `transferRoutes.ts` links a corridor page to a zone by `zoneKey` (`'zone-5'`), never by display name, so renaming a zone in admin cannot break a fare. `routeFare()` throws on an unknown key — deliberately, to fail the build rather than publish a page with no price — so `safeRouteFare()` is the browser-side variant that falls back to the snapshot.
 
-Never hand-edit `src/data/zones.generated.ts`; edit prices in the admin dashboard.
+Never hand-edit `src/data/pricing.generated.ts`; edit prices in the admin dashboard.
+
+A `service_rates` row carries its `summary` ("Up to 4 people, 4 hours") and `includes` bullets alongside the price, deliberately: they describe the same offer, and a price that can change without its duration is how the FAQ came to quote a fare the rates table disagreed with.
 
 ## Conventions
 

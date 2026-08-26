@@ -2,14 +2,18 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   ROUND_TRIP_DISCOUNT,
+  SERVICE_RATES,
   ZONES,
   formatRatesUpdated,
+  type ServiceRate,
   type Zone,
 } from '../data/zones';
-import { ZONE_SNAPSHOT } from '../data/zones.generated';
+import { PRICING_SNAPSHOT } from '../data/pricing.generated';
 
 export interface LivePricing {
   zones: Zone[];
+  /** Island tours and hourly charter. */
+  services: ServiceRate[];
   /** Fraction taken off two one-way UVF fares for a round trip. */
   roundTripDiscount: number;
   /** Already formatted for display, e.g. "July 2026". */
@@ -20,8 +24,9 @@ export interface LivePricing {
 
 const SNAPSHOT: LivePricing = {
   zones: ZONES,
+  services: SERVICE_RATES,
   roundTripDiscount: ROUND_TRIP_DISCOUNT,
-  ratesUpdated: formatRatesUpdated(ZONE_SNAPSHOT.ratesUpdated),
+  ratesUpdated: formatRatesUpdated(PRICING_SNAPSHOT.ratesUpdated),
   isLive: false,
 };
 
@@ -58,10 +63,16 @@ export const useLiveZones = (): LivePricing => {
     let cancelled = false;
 
     const load = async () => {
-      const [zoneResult, settingsResult] = await Promise.all([
+      const [zoneResult, serviceResult, settingsResult] = await Promise.all([
         supabase
           .from('zone_rates')
           .select('zone_key,name,areas,uvf_usd,slu_usd')
+          .eq('active', true)
+          .order('sort_order')
+          .order('name'),
+        supabase
+          .from('service_rates')
+          .select('service_key,name,price_usd,price_unit,summary,includes')
           .eq('active', true)
           .order('sort_order')
           .order('name'),
@@ -86,10 +97,24 @@ export const useLiveZones = (): LivePricing => {
         slu: Number(row.slu_usd),
       }));
 
+      // Unlike zones, an empty service list is a legitimate state — the owner
+      // may have stopped offering tours — so only a failed read falls back.
+      const services: ServiceRate[] = serviceResult.error
+        ? SNAPSHOT.services
+        : (serviceResult.data ?? []).map((row) => ({
+            key: row.service_key,
+            name: row.name,
+            price: Number(row.price_usd),
+            unit: row.price_unit === 'hourly' ? 'hourly' : 'flat',
+            summary: row.summary ?? '',
+            includes: row.includes ?? [],
+          }));
+
       const settings = settingsResult.error ? null : settingsResult.data;
 
       const next: LivePricing = {
         zones,
+        services,
         roundTripDiscount: Number(settings?.round_trip_discount ?? ROUND_TRIP_DISCOUNT),
         ratesUpdated: settings?.rates_updated
           ? formatRatesUpdated(String(settings.rates_updated))
@@ -102,6 +127,7 @@ export const useLiveZones = (): LivePricing => {
       // last deploy.
       const unchanged =
         JSON.stringify(next.zones) === JSON.stringify(pricing.zones) &&
+        JSON.stringify(next.services) === JSON.stringify(pricing.services) &&
         next.roundTripDiscount === pricing.roundTripDiscount &&
         next.ratesUpdated === pricing.ratesUpdated;
 

@@ -1,5 +1,5 @@
 /**
- * Refreshes src/data/zones.generated.ts from the live `zone_rates` table.
+ * Refreshes src/data/pricing.generated.ts from the live pricing tables.
  *
  * Runs first in `npm run build`, before Vite, so the client bundle, the
  * prerendered HTML, the Offer schema and llms.txt are all built from the same
@@ -15,12 +15,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const target = join(root, 'src', 'data', 'zones.generated.ts');
+const target = join(root, 'src', 'data', 'pricing.generated.ts');
 
 /** Non-fatal exit: keep the committed snapshot, tell the operator why. */
 const keepSnapshot = (reason) => {
   console.warn(`  ⚠ sync-rates: ${reason}`);
-  console.warn('    Building from the committed snapshot in src/data/zones.generated.ts.');
+  console.warn('    Building from the committed snapshot in src/data/pricing.generated.ts.');
   process.exit(0);
 };
 
@@ -75,10 +75,12 @@ const get = async (path) => {
 };
 
 let zones;
+let services;
 let settings;
 try {
-  [zones, settings] = await Promise.all([
+  [zones, services, settings] = await Promise.all([
     get('zone_rates?select=zone_key,name,areas,uvf_usd,slu_usd&active=eq.true&order=sort_order.asc,name.asc'),
+    get('service_rates?select=service_key,name,price_usd,price_unit,summary,includes&active=eq.true&order=sort_order.asc,name.asc'),
     get('pricing_settings?select=round_trip_discount,rates_updated&id=eq.1'),
   ]);
 } catch (error) {
@@ -89,13 +91,20 @@ if (!Array.isArray(zones) || zones.length === 0) {
   keepSnapshot('the zone_rates table returned no active rows.');
 }
 
+// Tours and charters are allowed to be empty in a way zones are not: an owner
+// who stops offering them should see the section disappear, not see the build
+// refuse. Only a failed read (handled above) falls back.
+if (!Array.isArray(services)) services = [];
+
 const setting = settings?.[0] ?? {};
 const roundTripDiscount = Number(setting.round_trip_discount ?? 0.1);
 const ratesUpdated = setting.rates_updated ?? new Date().toISOString().slice(0, 10);
 
 const escape = (value) => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
-const rows = zones
+const list = (values) => `[${(values ?? []).map((v) => `'${escape(v)}'`).join(', ')}]`;
+
+const zoneRows = zones
   .map(
     (z) =>
       `    { key: '${escape(z.zone_key)}', name: '${escape(z.name)}', ` +
@@ -103,8 +112,17 @@ const rows = zones
   )
   .join('\n');
 
+const serviceRows = services
+  .map(
+    (s) =>
+      `    { key: '${escape(s.service_key)}', name: '${escape(s.name)}', ` +
+      `price: ${Number(s.price_usd)}, unit: '${escape(s.price_unit)}', ` +
+      `summary: '${escape(s.summary)}', includes: ${list(s.includes)} },`
+  )
+  .join('\n');
+
 const contents = `/**
- * Build-time snapshot of the zone pricing held in Supabase.
+ * Build-time snapshot of the pricing held in Supabase.
  *
  * GENERATED FILE — written by scripts/sync-rates.mjs, which runs at the start
  * of \`npm run build\`. Edit prices in the admin dashboard, not here.
@@ -122,19 +140,24 @@ const contents = `/**
  * src/hooks/useLiveZones.ts), so visitors see an admin edit immediately; this
  * snapshot is what crawlers and AI engines see until the next deploy.
  */
-import type { Zone } from './zones';
+import type { ServiceRate, Zone } from './zones';
 
-export interface ZoneSnapshot {
+export interface PricingSnapshot {
   zones: Zone[];
+  /** Island tours and hourly charter — the cards below the zone table. */
+  services: ServiceRate[];
   /** Round trip is two one-way UVF fares less this fraction. */
   roundTripDiscount: number;
-  /** ISO date these fares were last changed. Rendered as "July 2026". */
+  /** ISO date the zone fares were last changed. Rendered as "July 2026". */
   ratesUpdated: string;
 }
 
-export const ZONE_SNAPSHOT: ZoneSnapshot = {
+export const PRICING_SNAPSHOT: PricingSnapshot = {
   zones: [
-${rows}
+${zoneRows}
+  ],
+  services: [
+${serviceRows}
   ],
   roundTripDiscount: ${roundTripDiscount},
   ratesUpdated: '${escape(ratesUpdated)}',
@@ -143,8 +166,8 @@ ${rows}
 
 const previous = await readFile(target, 'utf8').catch(() => '');
 if (previous === contents) {
-  console.log(`  sync-rates: snapshot already current (${zones.length} zones, dated ${ratesUpdated}).`);
+  console.log(`  sync-rates: snapshot already current (${zones.length} zones, ${services.length} services, dated ${ratesUpdated}).`);
 } else {
   await writeFile(target, contents, 'utf8');
-  console.log(`  sync-rates: snapshot updated (${zones.length} zones, dated ${ratesUpdated}).`);
+  console.log(`  sync-rates: snapshot updated (${zones.length} zones, ${services.length} services, dated ${ratesUpdated}).`);
 }
