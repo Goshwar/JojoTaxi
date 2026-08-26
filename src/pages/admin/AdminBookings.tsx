@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Plane, Map } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../lib/supabase';
 import {
-  Booking, BookingStatus, BookingType,
+  Booking, BookingStatus, BookingType, NotifiableStatus,
   bookingRoute, bookingTypeLabel, durationLabel, notifyBookingStatus,
   tourTypeLabel, transferDirectionLabel,
 } from '../../lib/bookings';
@@ -11,8 +11,13 @@ import {
 const STATUS_COLORS: Record<BookingStatus, string> = {
   pending: 'bg-yellow/20 text-yellow-800',
   confirmed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-700',
+  declined: 'bg-red-100 text-red-700',
+  cancelled: 'bg-gray-200 text-gray-700',
 };
+
+/** Only these two email the customer; the workflow's switch branches on them. */
+const isNotifiable = (s: BookingStatus): s is NotifiableStatus =>
+  s === 'confirmed' || s === 'declined';
 
 /*
  * Dispatch works one service at a time: a transfer is met at a terminal against
@@ -26,7 +31,7 @@ const SERVICE_TABS: { key: BookingType | 'all'; label: string; icon?: typeof Pla
   { key: 'island_tour', label: 'Island Tours', icon: Map },
 ];
 
-const STATUS_TABS: (BookingStatus | 'all')[] = ['all', 'pending', 'confirmed', 'cancelled'];
+const STATUS_TABS: (BookingStatus | 'all')[] = ['all', 'pending', 'confirmed', 'declined', 'cancelled'];
 
 /** Labelled cells for the expanded panel, keyed off what the booking actually is. */
 const detailFields = (b: Booking): [string, string][] =>
@@ -80,25 +85,42 @@ const AdminBookings: React.FC = () => {
   const setStatus = async (booking: Booking, status: BookingStatus) => {
     let decline_reason: string | null = booking.decline_reason;
 
-    if (status === 'cancelled') {
+    // Declining is the only outcome the customer is given a reason for — it is
+    // the one they did not ask for. The decline email already renders it.
+    if (status === 'declined') {
       const { isConfirmed, value } = await Swal.fire({
-        title: 'Cancel this booking?',
+        title: 'Decline this booking?',
+        text: 'The customer will be emailed that we cannot accommodate them.',
         input: 'text',
         inputLabel: 'Reason for the customer (optional)',
         inputPlaceholder: 'e.g. No vehicle available for that time',
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
         cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, cancel it',
+        confirmButtonText: 'Yes, decline it',
         cancelButtonText: 'Keep booking',
       });
       if (!isConfirmed) return;
       decline_reason = (value as string)?.trim() || null;
     }
 
+    if (status === 'cancelled') {
+      const { isConfirmed } = await Swal.fire({
+        title: 'Cancel this booking?',
+        text: 'Use this when the booking is called off after the fact. No email is sent.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#6b7280',
+        cancelButtonColor: '#9ca3af',
+        confirmButtonText: 'Yes, cancel it',
+        cancelButtonText: 'Keep booking',
+      });
+      if (!isConfirmed) return;
+    }
+
     setUpdating(booking.id);
     const patch: Partial<Booking> = { status, updated_at: new Date().toISOString() };
-    if (status === 'cancelled') patch.decline_reason = decline_reason;
+    if (status === 'declined') patch.decline_reason = decline_reason;
 
     const { error } = await supabase.from('bookings').update(patch).eq('id', booking.id);
     setUpdating(null);
@@ -113,9 +135,9 @@ const AdminBookings: React.FC = () => {
       return;
     }
 
-    // Tell the customer. Moving back to pending is an internal correction, so
-    // it stays silent — there is no "your booking is un-confirmed" email.
-    if (status !== 'pending') {
+    // Confirm and decline are decisions the customer is waiting on. Cancelling,
+    // and any correction back to pending, stay silent.
+    if (isNotifiable(status)) {
       notifyBookingStatus({ ...booking, decline_reason }, status, decline_reason ?? undefined);
     }
 
@@ -216,7 +238,7 @@ const AdminBookings: React.FC = () => {
                         ...detailFields(b),
                         ['Special Requests', b.special_requests || '—'],
                         ['Submitted', new Date(b.created_at).toLocaleString()],
-                        ...(b.decline_reason ? [['Cancellation Reason', b.decline_reason] as [string, string]] : []),
+                        ...(b.decline_reason ? [['Decline Reason', b.decline_reason] as [string, string]] : []),
                       ] as [string, string][]).map(([label, val]) => (
                         <div key={label}>
                           <p className="text-gray-400 text-xs mb-0.5">{label}</p>
@@ -244,11 +266,20 @@ const AdminBookings: React.FC = () => {
                           Mark Pending
                         </button>
                       )}
+                      {b.status !== 'declined' && (
+                        <button
+                          disabled={updating === b.id}
+                          onClick={() => setStatus(b, 'declined')}
+                          className="px-3 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors"
+                        >
+                          Decline
+                        </button>
+                      )}
                       {b.status !== 'cancelled' && (
                         <button
                           disabled={updating === b.id}
                           onClick={() => setStatus(b, 'cancelled')}
-                          className="px-3 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors"
+                          className="px-3 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors"
                         >
                           Cancel
                         </button>

@@ -12,8 +12,19 @@
 /** What the customer is buying. Mirrors the `bookings_booking_type_check` constraint. */
 export type BookingType = 'airport_transfer' | 'island_tour';
 
-/** Mirrors `bookings_status_check`. Postgres rejects anything else outright. */
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
+/**
+ * Mirrors `bookings_status_check`. Postgres rejects anything else outright.
+ *
+ * `declined` and `cancelled` are deliberately distinct outcomes:
+ *   declined  — we turned the request down. Carries `decline_reason` and sends
+ *               the customer a decline email.
+ *   cancelled — called off after the fact, usually by the customer. No
+ *               automated email; that conversation already happened.
+ */
+export type BookingStatus = 'pending' | 'confirmed' | 'declined' | 'cancelled';
+
+/** The outcomes the customer is emailed about. */
+export type NotifiableStatus = Extract<BookingStatus, 'confirmed' | 'declined'>;
 
 export type TransferDirection = 'arrival' | 'departure';
 export type TourType = 'island_tour' | 'city_tour' | 'waterfall_tour' | 'sunset_tour';
@@ -218,18 +229,18 @@ export const notifyNewBooking = (payload: NewBooking) =>
  * here updated Postgres and told the customer nothing; only the approve link
  * in the admin's email ever sent them anything.
  *
- * That workflow's switch reads `confirmed` / `declined`, while the column is
- * constrained to `confirmed` / `cancelled`. The database wins and the mapping
- * lives here, at the boundary, so only this function knows both vocabularies.
+ * Only `confirmed` and `declined` are notifiable, which is exactly what that
+ * workflow's switch branches on. `cancelled` and a correction back to
+ * `pending` stay silent by construction — the type will not let you send one.
  */
 export const notifyBookingStatus = (
   booking: Booking,
-  status: Exclude<BookingStatus, 'pending'>,
+  status: NotifiableStatus,
   decline_reason?: string,
 ) =>
   postWebhook(import.meta.env.VITE_N8N_STATUS_WEBHOOK_URL as string | undefined, {
     booking_ref: booking.booking_ref,
-    status: status === 'cancelled' ? 'declined' : 'confirmed',
+    status,
     customer_name: booking.full_name,
     customer_email: booking.email,
     booking_type_label: bookingTypeLabel(booking.booking_type),

@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS bookings (
 
   booking_ref text NOT NULL UNIQUE,
   booking_type text NOT NULL CHECK (booking_type IN ('airport_transfer', 'island_tour')),
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled')),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'declined', 'cancelled')),
 
   full_name text NOT NULL,
   email text NOT NULL,

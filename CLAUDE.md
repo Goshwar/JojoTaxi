@@ -73,7 +73,14 @@ A booking reaches staff by two independent paths, and both must keep working:
 
 Status changes have the same shape. `/admin/bookings` writes the status **and** posts to `VITE_N8N_STATUS_WEBHOOK_URL` (`FTT — Booking Status Update`) so the customer hears about it — before that call existed on the button, confirming in the admin panel updated Postgres and told the customer nothing, and only the approve link in the admin's email ever notified them.
 
-⚠️ **Two status vocabularies exist.** The database is constrained to `pending | confirmed | cancelled`; the n8n workflows switch on `confirmed | declined`. The database wins, and `notifyBookingStatus()` maps `cancelled → declined` at the boundary so nothing else has to know both. Note that the `FTT — Email Approval` workflow's decline branch still writes `status: 'declined'` **directly** to Supabase, which the CHECK constraint rejects — that write fails silently while the workflow still emails the customer a decline and shows a success page. Fix it in n8n, not by widening the constraint.
+`status` is `pending | confirmed | declined | cancelled`, and the last two are **not** synonyms:
+
+- **`declined`** — we turned the request down. Carries `decline_reason` and emails the customer.
+- **`cancelled`** — called off after the fact, usually by the customer. No automated email; that conversation already happened.
+
+Only `confirmed` and `declined` are notifiable, which is exactly what the status workflow's switch branches on — `NotifiableStatus` encodes that, so the type system will not let you email someone about a cancellation or about a correction back to `pending`.
+
+The constraint used to permit only `pending | confirmed | cancelled` while the `FTT — Email Approval` workflow wrote `declined` straight to Supabase. Postgres rejected that UPDATE and the workflow carried on regardless — customer emailed a decline, green success page, booking still sitting in `pending`. `20260826141500_allow_declined_booking_status.sql` widened the constraint, which is what made the existing `decline_reason` column reachable at all.
 
 ## Pricing
 
