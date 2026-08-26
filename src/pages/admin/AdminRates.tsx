@@ -38,6 +38,36 @@ interface PricingSettings {
   updated_at: string;
 }
 
+interface ServiceRateRow {
+  id: string;
+  service_key: string;
+  name: string;
+  price_usd: number;
+  price_unit: 'flat' | 'hourly';
+  summary: string;
+  includes: string[];
+  sort_order: number;
+  active: boolean;
+}
+
+type ServiceDraft = {
+  service_key: string;
+  name: string;
+  price_usd: number;
+  price_unit: 'flat' | 'hourly';
+  summary: string;
+  /** Edited as one bullet per line; split on save. */
+  includes: string;
+};
+
+const emptyService: ServiceDraft = {
+  service_key: '', name: '', price_usd: 0, price_unit: 'flat', summary: '', includes: '',
+};
+
+/** Textarea lines → array, dropping blanks so a stray newline is not a bullet. */
+const toBullets = (text: string): string[] =>
+  text.split('\n').map((line) => line.trim()).filter(Boolean);
+
 type Draft = {
   zone_key: string;
   name: string;
@@ -67,7 +97,11 @@ const inputClass =
 
 const AdminRates: React.FC = () => {
   const [zones, setZones] = useState<ZoneRate[]>([]);
+  const [services, setServices] = useState<ServiceRateRow[]>([]);
   const [settings, setSettings] = useState<PricingSettings | null>(null);
+  const [editingService, setEditingService] = useState<string | null>(null);
+  const [serviceDraft, setServiceDraft] = useState<ServiceDraft>(emptyService);
+  const [addingService, setAddingService] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -78,11 +112,13 @@ const AdminRates: React.FC = () => {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [zoneResult, settingsResult] = await Promise.all([
+    const [zoneResult, serviceResult, settingsResult] = await Promise.all([
       supabase.from('zone_rates').select('*').order('sort_order').order('name'),
+      supabase.from('service_rates').select('*').order('sort_order').order('name'),
       supabase.from('pricing_settings').select('*').eq('id', 1).maybeSingle(),
     ]);
     setZones(zoneResult.data ?? []);
+    setServices(serviceResult.data ?? []);
     setSettings(settingsResult.data ?? null);
     setLoading(false);
   }, []);
@@ -222,6 +258,85 @@ const AdminRates: React.FC = () => {
     if (!confirmed.isConfirmed) return;
 
     const { error } = await supabase.from('zone_rates').delete().eq('id', zone.id);
+    if (error) return fail(error.message);
+    load();
+  };
+
+  const startServiceEdit = (service: ServiceRateRow) => {
+    setAddingService(false);
+    setEditingService(service.id);
+    setServiceDraft({
+      service_key: service.service_key,
+      name: service.name,
+      price_usd: service.price_usd,
+      price_unit: service.price_unit,
+      summary: service.summary,
+      includes: (service.includes ?? []).join('\n'),
+    });
+  };
+
+  const saveService = async () => {
+    const name = serviceDraft.name.trim();
+    if (!name) return fail('A tour or charter needs a name.');
+
+    const payload = {
+      name,
+      price_usd: serviceDraft.price_usd,
+      price_unit: serviceDraft.price_unit,
+      summary: serviceDraft.summary.trim(),
+      includes: toBullets(serviceDraft.includes),
+    };
+
+    setBusy(editingService ?? 'new-service');
+    let error;
+    if (editingService) {
+      // service_key is fixed once created, same reasoning as zone_key.
+      ({ error } = await supabase.from('service_rates').update(payload).eq('id', editingService));
+    } else {
+      const key = serviceDraft.service_key.trim() || slugify(name);
+      if (!key) {
+        setBusy(null);
+        return fail('Could not derive a key from that name — set one manually.');
+      }
+      if (services.some((s) => s.service_key === key)) {
+        setBusy(null);
+        return fail(`A tour or charter with the key "${key}" already exists.`);
+      }
+      ({ error } = await supabase.from('service_rates').insert([{
+        ...payload,
+        service_key: key,
+        sort_order: services.length ? Math.max(...services.map((s) => s.sort_order)) + 1 : 1,
+      }]));
+    }
+    setBusy(null);
+    if (error) return fail(error.message);
+
+    setEditingService(null);
+    setAddingService(false);
+    setServiceDraft(emptyService);
+    load();
+  };
+
+  const toggleServiceActive = async (service: ServiceRateRow) => {
+    const { error } = await supabase
+      .from('service_rates')
+      .update({ active: !service.active })
+      .eq('id', service.id);
+    if (error) return fail(error.message);
+    load();
+  };
+
+  const deleteService = async (service: ServiceRateRow) => {
+    const confirmed = await Swal.fire({
+      icon: 'warning',
+      title: `Delete ${service.name}?`,
+      text: 'This removes the card from the public rates page. It cannot be undone.',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#dc2626',
+    });
+    if (!confirmed.isConfirmed) return;
+    const { error } = await supabase.from('service_rates').delete().eq('id', service.id);
     if (error) return fail(error.message);
     load();
   };
@@ -575,6 +690,167 @@ const AdminRates: React.FC = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Island tours and hourly charter. Cards rather than a table row:
+              the feature bullets are multi-line, and a textarea inside a table
+              cell is a worse editing experience than it looks. */}
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="font-semibold text-gray-800">Island tours &amp; hourly charter</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                The three cards below the transfer table on the public rates page.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingService(null);
+                setServiceDraft(emptyService);
+                setAddingService(true);
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-turquoise text-white text-sm rounded-lg hover:bg-turquoise/90 transition-colors"
+            >
+              <Plus size={15} /> Add
+            </button>
+          </div>
+
+          {(addingService || editingService) && (
+            <div className="bg-white rounded-xl border border-turquoise/40 p-5 mb-6">
+              <h3 className="font-semibold text-gray-800 mb-4">
+                {editingService ? 'Edit' : 'New tour or charter'}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="md:col-span-2">
+                  <label className="text-xs text-gray-500 mb-1 block">Name</label>
+                  <input
+                    className={`${inputClass} w-full`}
+                    value={serviceDraft.name}
+                    onChange={(e) => setServiceDraft((p) => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g., Half-Day Island Tour"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Price (USD)</label>
+                  <input
+                    type="number"
+                    className={`${inputClass} w-full text-right`}
+                    value={serviceDraft.price_usd}
+                    onChange={(e) => setServiceDraft((p) => ({ ...p, price_usd: Number(e.target.value) }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Charged</label>
+                  <select
+                    className={`${inputClass} w-full`}
+                    value={serviceDraft.price_unit}
+                    onChange={(e) =>
+                      setServiceDraft((p) => ({ ...p, price_unit: e.target.value as 'flat' | 'hourly' }))
+                    }
+                  >
+                    <option value="flat">Flat rate</option>
+                    <option value="hourly">Per hour</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-3">
+                <label className="text-xs text-gray-500 mb-1 block">
+                  Summary — shown under the price
+                </label>
+                <input
+                  className={`${inputClass} w-full`}
+                  value={serviceDraft.summary}
+                  onChange={(e) => setServiceDraft((p) => ({ ...p, summary: e.target.value }))}
+                  placeholder="e.g., Up to 4 people, 4 hours"
+                />
+              </div>
+              <div className="mt-3">
+                <label className="text-xs text-gray-500 mb-1 block">
+                  What&apos;s included — one per line
+                </label>
+                <textarea
+                  rows={4}
+                  className={`${inputClass} w-full font-mono text-xs`}
+                  value={serviceDraft.includes}
+                  onChange={(e) => setServiceDraft((p) => ({ ...p, includes: e.target.value }))}
+                  placeholder={'Customizable itinerary\nProfessional driver/guide'}
+                />
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button
+                  disabled={busy === (editingService ?? 'new-service')}
+                  onClick={saveService}
+                  className="px-4 py-2 bg-turquoise text-white text-sm rounded-lg hover:bg-turquoise/90 disabled:opacity-50 transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingService(null);
+                    setAddingService(false);
+                    setServiceDraft(emptyService);
+                  }}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {services.map((service) => (
+              <div
+                key={service.id}
+                className={`bg-white rounded-xl border border-gray-200 p-4 ${service.active ? '' : 'opacity-50'}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-gray-800">{service.name}</p>
+                    <p className="text-2xl font-bold text-turquoise mt-1">
+                      {service.price_unit === 'hourly' ? `$${service.price_usd}/hr` : `$${service.price_usd}`}
+                    </p>
+                    <p className="text-xs text-gray-500">{service.summary}</p>
+                  </div>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() => toggleServiceActive(service)}
+                      title={service.active ? 'Hide from the public site' : 'Show on the public site'}
+                      className="p-1.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    >
+                      {service.active ? <Eye size={14} /> : <EyeOff size={14} />}
+                    </button>
+                    <button
+                      onClick={() => startServiceEdit(service)}
+                      title="Edit"
+                      className="p-1.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => deleteService(service)}
+                      title="Delete"
+                      className="p-1.5 rounded bg-red-100 text-red-600 hover:bg-red-200"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+                <ul className="mt-3 space-y-1">
+                  {(service.includes ?? []).map((item) => (
+                    <li key={item} className="text-xs text-gray-600 flex gap-1.5">
+                      <span className="text-turquoise">✓</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                {!service.active && <p className="text-xs text-gray-400 mt-3">Hidden from the site</p>}
+              </div>
+            ))}
+            {services.length === 0 && (
+              <p className="text-sm text-gray-400 md:col-span-3 py-6 text-center">
+                No tours or charters. The section is hidden on the public rates page.
+              </p>
+            )}
           </div>
 
           {/* The discount is published as a number in llms.txt and as copy on

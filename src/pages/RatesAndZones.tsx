@@ -6,14 +6,14 @@ import { useBooking } from '../contexts/BookingContext';
 import Seo from '../components/ui/Seo';
 import JsonLd from '../components/ui/JsonLd';
 import { breadcrumbSchema } from '../lib/schema';
-import { roundTripFare, discountLabel } from '../data/zones';
+import { roundTripFare, discountLabel, formatServicePrice } from '../data/zones';
 import { TRANSFER_ROUTES, safeRouteFare } from '../data/transferRoutes';
 import { useLiveZones } from '../hooks/useLiveZones';
 
 const RatesAndZones: React.FC = () => {
   // Starts as the prices baked into this page's prerendered HTML, then
   // refreshes from Supabase so an admin edit is visible without a redeploy.
-  const { zones, roundTripDiscount, ratesUpdated } = useLiveZones();
+  const { zones, services, roundTripDiscount, ratesUpdated } = useLiveZones();
   const { openModal } = useBooking();
   const navigate = useNavigate();
   const handleBookNow = () => {
@@ -167,87 +167,34 @@ const RatesAndZones: React.FC = () => {
             centered={true}
           />
           
+          {/* Rendered from service_rates rather than three near-identical
+              hardcoded blocks. The price, the summary beneath it and the
+              feature bullets all move together when an admin edits the offer —
+              a price that could change without its "4 hours" is how the FAQ
+              came to quote a fare the rates table disagreed with. */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            <div className="card hover:shadow-lg">
-              <h3 className="text-xl font-bold mb-4">Half-Day Island Tour</h3>
-              <p className="text-3xl font-bold text-turquoise mb-2">$150</p>
-              <p className="text-gray-500 mb-4">Up to 4 people, 4 hours</p>
-              <ul className="space-y-2 mb-6">
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Customizable itinerary</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Professional driver/guide</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Hotel pickup and drop-off</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Bottled water included</span>
-                </li>
-              </ul>
-              <button onClick={handleBookNow} className="btn btn-cta w-full">
-                Book Now
-              </button>
-            </div>
-
-            <div className="card hover:shadow-lg">
-              <h3 className="text-xl font-bold mb-4">Full-Day Island Tour</h3>
-              <p className="text-3xl font-bold text-turquoise mb-2">$250</p>
-              <p className="text-gray-500 mb-4">Up to 4 people, 8 hours</p>
-              <ul className="space-y-2 mb-6">
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Comprehensive island exploration</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Professional driver/guide</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Hotel pickup and drop-off</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Bottled water and refreshments</span>
-                </li>
-              </ul>
-              <button onClick={handleBookNow} className="btn btn-cta w-full">
-                Book Now
-              </button>
-            </div>
-
-            <div className="card hover:shadow-lg">
-              <h3 className="text-xl font-bold mb-4">Hourly Charter</h3>
-              <p className="text-3xl font-bold text-turquoise mb-2">$45/hr</p>
-              <p className="text-gray-500 mb-4">Minimum 4 hours</p>
-              <ul className="space-y-2 mb-6">
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Flexible scheduling</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Dedicated driver</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Create your own itinerary</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-turquoise mr-2">✓</span>
-                  <span>Ideal for shopping or restaurant visits</span>
-                </li>
-              </ul>
-              <button onClick={handleBookNow} className="btn btn-cta w-full">
-                Book Now
-              </button>
-            </div>
+            {services.map((service) => (
+              <div key={service.key} className="card hover:shadow-lg">
+                <h3 className="text-xl font-bold mb-4">{service.name}</h3>
+                {/* Interpolated as one string so React does not split the
+                    currency symbol from the number with an HTML comment. */}
+                <p className="text-3xl font-bold text-turquoise mb-2">
+                  {formatServicePrice(service)}
+                </p>
+                <p className="text-gray-500 mb-4">{service.summary}</p>
+                <ul className="space-y-2 mb-6">
+                  {service.includes.map((item) => (
+                    <li key={item} className="flex items-start">
+                      <span className="text-turquoise mr-2">✓</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={handleBookNow} className="btn btn-cta w-full">
+                  Book Now
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </section>

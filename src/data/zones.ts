@@ -6,15 +6,16 @@
  * prices published in llms.txt — so the figures quoted to AI engines can never
  * drift from the figures shown to visitors.
  *
- * The numbers themselves live in Supabase (`zone_rates`) and are edited in the
- * admin dashboard. This module reads the build-time snapshot of that table
- * (./zones.generated.ts) because prerendering, llms.txt generation and schema
- * building all run in Node with no chance to await a query. Browsers refresh
+ * The numbers themselves live in Supabase (`zone_rates` and `service_rates`)
+ * and are edited in the admin dashboard. This module reads the build-time
+ * snapshot of those tables (./pricing.generated.ts) because prerendering,
+ * llms.txt generation and schema building all run in Node with no chance to
+ * await a query. Browsers refresh
  * from the live table after hydration via useLiveZones().
  *
  * Prices are USD per vehicle (not per person), one-way unless stated.
  */
-import { ZONE_SNAPSHOT } from './zones.generated';
+import { PRICING_SNAPSHOT } from './pricing.generated';
 
 export interface Zone {
   /** Stable slug ('zone-1'). Referenced by transferRoutes so renaming a zone
@@ -30,8 +31,30 @@ export interface Zone {
   slu: number;
 }
 
+/**
+ * A tour or charter product priced as a flat rate or by the hour — the cards
+ * under "Island Tour & Hourly Charter Rates" on the rates page.
+ *
+ * `summary` and `includes` live here rather than in JSX because they describe
+ * the same offer as the price: an owner who raises the half-day tour to $175
+ * without being able to change "4 hours" is exactly how the FAQ ended up
+ * quoting a fare the rates table disagreed with.
+ */
+export interface ServiceRate {
+  /** Stable slug ('half-day-tour'). */
+  key: string;
+  name: string;
+  price: number;
+  /** 'flat' renders "$150"; 'hourly' renders "$45/hr". */
+  unit: 'flat' | 'hourly';
+  /** The line under the price, e.g. "Up to 4 people, 4 hours". */
+  summary: string;
+  /** Ticked feature bullets. */
+  includes: string[];
+}
+
 /** Round trips are two one-way UVF fares less this fraction. */
-export const ROUND_TRIP_DISCOUNT = ZONE_SNAPSHOT.roundTripDiscount;
+export const ROUND_TRIP_DISCOUNT = PRICING_SNAPSHOT.roundTripDiscount;
 
 /**
  * Round-trip fare for a one-way price.
@@ -47,7 +70,13 @@ export const roundTripFare = (oneWay: number, discount: number = ROUND_TRIP_DISC
 export const discountLabel = (discount: number = ROUND_TRIP_DISCOUNT): string =>
   `${Math.round(discount * 100)}%`;
 
-export const ZONES: Zone[] = ZONE_SNAPSHOT.zones;
+export const ZONES: Zone[] = PRICING_SNAPSHOT.zones;
+
+export const SERVICE_RATES: ServiceRate[] = PRICING_SNAPSHOT.services;
+
+/** "$150" for a flat rate, "$45/hr" for an hourly one. */
+export const formatServicePrice = (service: ServiceRate): string =>
+  service.unit === 'hourly' ? `$${service.price}/hr` : `$${service.price}`;
 
 export const findZone = (key: string, zones: Zone[] = ZONES): Zone | undefined =>
   zones.find((z) => z.key === key);
@@ -78,4 +107,4 @@ export const formatRatesUpdated = (isoDate: string): string => {
  * is. Maintained by a database trigger on every price change — nobody has to
  * remember to update it.
  */
-export const RATES_UPDATED = formatRatesUpdated(ZONE_SNAPSHOT.ratesUpdated);
+export const RATES_UPDATED = formatRatesUpdated(PRICING_SNAPSHOT.ratesUpdated);
