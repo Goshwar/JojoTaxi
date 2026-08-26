@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../lib/supabase';
+import { buildBookingPayload, makeBookingRef, notifyNewBooking } from '../../lib/bookings';
 import { useBooking } from '../../contexts/BookingContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -261,40 +262,37 @@ const BookingModal: React.FC<Props> = ({ mode = 'modal' }) => {
     setSubmitting(true);
     setSubmitError('');
 
-    const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const rand = String(Math.floor(1000 + Math.random() * 9000));
-    const booking_ref = `FTT-${dateStamp}-${rand}`;
+    const booking_ref = makeBookingRef();
+    const isTransfer = form.service_type === 'airport';
 
-    const base = {
+    const payload = buildBookingPayload(
+      isTransfer ? 'airport_transfer' : 'island_tour',
+      {
+        full_name: form.full_name,
+        email: form.email,
+        phone: form.phone,
+        passengers: form.passengers,
+        booking_date: form.booking_date,
+        pickup_time: form.pickup_time,
+        special_requests: form.special_requests,
+      },
+      isTransfer
+        ? {
+            transfer_direction: form.transfer_direction || '',
+            flight_number: form.flight_number,
+            airline: form.airline,
+            pickup_location: form.pickup_location,
+            dropoff_location: form.dropoff_location,
+            luggage_count: form.luggage_count,
+          }
+        : {
+            tour_type: form.tour_type || '',
+            hotel_address: form.hotel_address,
+            duration_preference: form.duration_preference || '',
+            accessibility_needs: form.has_accessibility ? form.accessibility_needs : null,
+          },
       booking_ref,
-      booking_type: form.service_type === 'airport' ? 'airport_transfer' : 'island_tour',
-      status: 'pending',
-      full_name: form.full_name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      passengers: form.passengers,
-      booking_date: form.booking_date,
-      pickup_time: form.pickup_time,
-      special_requests: form.special_requests.trim() || null,
-    };
-
-    const payload = form.service_type === 'airport'
-      ? {
-          ...base,
-          transfer_direction: form.transfer_direction || null,
-          flight_number: form.flight_number.trim(),
-          airline: form.airline.trim() || null,
-          pickup_location: form.pickup_location.trim(),
-          dropoff_location: form.dropoff_location.trim(),
-          luggage_count: form.luggage_count,
-        }
-      : {
-          ...base,
-          tour_type: form.tour_type || null,
-          hotel_address: form.hotel_address.trim(),
-          duration_preference: form.duration_preference || null,
-          accessibility_needs: form.has_accessibility ? (form.accessibility_needs.trim() || null) : null,
-        };
+    );
 
     const { error: dbError } = await supabase.from('bookings').insert([payload]);
 
@@ -304,14 +302,7 @@ const BookingModal: React.FC<Props> = ({ mode = 'modal' }) => {
       return;
     }
 
-    const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL as string | undefined;
-    if (webhookUrl) {
-      fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).catch(() => {});
-    }
+    notifyNewBooking(payload);
 
     sessionStorage.setItem('bookingRef', booking_ref);
 

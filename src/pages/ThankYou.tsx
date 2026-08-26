@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 
 const ThankYou: React.FC = () => {
-  const orderId = sessionStorage.getItem('orderId');
+  const bookingRef = sessionStorage.getItem('bookingRef');
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -16,9 +16,9 @@ const ThankYou: React.FC = () => {
           <p className="mt-2 text-sm text-gray-600">
             A confirmation email is on its way. No payment due now—just pay your driver upon pickup.
           </p>
-          {orderId && (
+          {bookingRef && (
             <p className="mt-2 text-sm text-gray-500">
-              Booking Reference: #{orderId}
+              Booking Reference: {bookingRef}
             </p>
           )}
         </div>

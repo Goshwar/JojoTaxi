@@ -47,7 +47,33 @@ Note that every `VITE_` variable is inlined into the client bundle, so nothing s
 
 **Live database tables** (Supabase project `Tours`): `bookings`, `reviews`, `zone_rates`, `service_rates`, `pricing_settings`. That is all of them.
 
-⚠️ **`supabase/migrations/` does not describe the live database.** The older migrations define a `bookings` table with different column names than production actually uses (`full_name`/`booking_type`/`pickup_location` live, vs `name`/`pickup` in the migration), plus `contact_messages`, `rates` and `fleet_vehicles` tables that **do not exist**. Consequently `/admin/messages` and `/admin/fleet` query missing tables and silently render empty, and the Dashboard's unread-message count is always 0. Only `20260825120000_add_zone_rates_pricing_settings.sql` has been applied to the live project. Check the real schema before trusting a migration file.
+⚠️ **`supabase/migrations/` does not describe the live database.** The older migrations define a `bookings` table with different column names than production actually uses (`full_name`/`booking_type`/`pickup_location` live, vs `name`/`pickup` in the migration), plus `contact_messages`, `rates` and `fleet_vehicles` tables that **do not exist**. Consequently `/admin/messages` and `/admin/fleet` query missing tables and silently render empty, and the Dashboard's unread-message count is always 0. Check the real schema before trusting a migration file.
+
+`20260826140000_document_live_bookings_schema.sql` is the one file that does describe the live `bookings` table — it is idempotent and was written from the deployed schema, so treat it as the reference. Along with `20260825120000_add_zone_rates_pricing_settings.sql` and `20260826090000_add_service_rates.sql`, it is the only migration that matches the live project.
+
+## Booking Flow
+
+One wizard serves both services. `BookingModal` renders as the `/booking` page (`mode="page"`) and as the site-wide modal every "Book Now" opens (`mode="modal"`); step 1 picks the service and everything downstream branches on it.
+
+`src/lib/bookings.ts` is the single description of a booking — the live column names, the two `booking_type` values, the status vocabulary, the reference format, and the payload builder. **Anything that names a `bookings` column imports it from there.** The form and the admin list previously each carried a private copy of the shape and drifted: the form wrote the live names while `/admin/bookings` read the ones from the never-applied `20260422025600` migration, so every booking saved correctly and then rendered with a blank name, route and date.
+
+`booking_type` (`'airport_transfer' | 'island_tour'`) is the discriminator, and it decides which columns are populated:
+
+- **Airport transfer** — `transfer_direction`, `flight_number`, `airline`, `pickup_location`, `dropoff_location`, `luggage_count`
+- **Island tour** — `tour_type`, `hotel_address`, `duration_preference`, `accessibility_needs`
+
+The unused side must be **NULL, not `''`** — `bookings_tour_type_check` and `bookings_duration_preference_check` reject an empty string, so a transfer that sent `tour_type: ''` would fail the insert outright. `buildBookingPayload()` branches for that reason, not for tidiness.
+
+The same discriminator drives `/admin/bookings`, which splits into Airport Transfers and Island Tours and renders each booking only the fields that apply to it. A dispatcher meets a transfer at a terminal against a flight number and collects a tour from a hotel lobby; the two were previously listed together with neither one's fields on screen.
+
+A booking reaches staff by two independent paths, and both must keep working:
+
+1. **Supabase** — the anon INSERT is the record. It is the only step allowed to fail the customer's submit.
+2. **n8n** (`VITE_N8N_WEBHOOK_URL` → `FTT — New Booking Received`) — emails the admin an approve/decline pair and the customer a receipt. Fire-and-forget: a booking already in Postgres is a booking, so a bad minute on Render must not lose it.
+
+Status changes have the same shape. `/admin/bookings` writes the status **and** posts to `VITE_N8N_STATUS_WEBHOOK_URL` (`FTT — Booking Status Update`) so the customer hears about it — before that call existed on the button, confirming in the admin panel updated Postgres and told the customer nothing, and only the approve link in the admin's email ever notified them.
+
+⚠️ **Two status vocabularies exist.** The database is constrained to `pending | confirmed | cancelled`; the n8n workflows switch on `confirmed | declined`. The database wins, and `notifyBookingStatus()` maps `cancelled → declined` at the boundary so nothing else has to know both. Note that the `FTT — Email Approval` workflow's decline branch still writes `status: 'declined'` **directly** to Supabase, which the CHECK constraint rejects — that write fails silently while the workflow still emails the customer a decline and shows a success page. Fix it in n8n, not by widening the constraint.
 
 ## Pricing
 
