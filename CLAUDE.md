@@ -53,6 +53,8 @@ Note that every `VITE_` variable is inlined into the client bundle, so nothing s
 
 ## Booking Flow
 
+> See `BOOKING_FLOW_IMPLEMENTATION_PLAN.md` for the audit this section came out of (issues #17–#21).
+
 One wizard serves both services. `BookingModal` renders as the `/booking` page (`mode="page"`) and as the site-wide modal every "Book Now" opens (`mode="modal"`); step 1 picks the service and everything downstream branches on it.
 
 `src/lib/bookings.ts` is the single description of a booking — the live column names, the two `booking_type` values, the status vocabulary, the reference format, and the payload builder. **Anything that names a `bookings` column imports it from there.** The form and the admin list previously each carried a private copy of the shape and drifted: the form wrote the live names while `/admin/bookings` read the ones from the never-applied `20260422025600` migration, so every booking saved correctly and then rendered with a blank name, route and date.
